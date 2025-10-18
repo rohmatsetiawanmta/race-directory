@@ -59,7 +59,7 @@ const DeleteConfirmationModal = ({
             ) : (
               <Trash2 size={18} className="mr-2" />
             )}{" "}
-            Hapus Permanen
+            Hapus
           </button>
         </div>
       </div>
