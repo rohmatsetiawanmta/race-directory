@@ -8,6 +8,12 @@ const AdminDashboard = () => {
   // Data kartu dashboard untuk navigasi
   const adminModules = [
     {
+      title: "Manajemen Data Master",
+      description: "Kelola Jarak Lomba dan Tipe Lomba.",
+      icon: <Settings size={24} className="text-white" />,
+      to: "/admin/master",
+    },
+    {
       title: "Kelola Series & Event",
       description: "CRUD Event, termasuk data tahunan (FR-A01, FR-A02).",
       icon: <ListChecks size={24} className="text-white" />,
@@ -20,12 +26,6 @@ const AdminDashboard = () => {
       icon: <BookOpen size={24} className="text-white" />,
       to: "/admin/moderation",
       // Catatan: Rute ini belum ada di App.jsx, akan ditambahkan nanti.
-    },
-    {
-      title: "Manajemen Data Master",
-      description: "Jarak Lomba dan Tipe Lomba (FR-A04).",
-      icon: <Settings size={24} className="text-white" />,
-      to: "/admin/master",
     },
     {
       title: "Manajemen Pengguna",
