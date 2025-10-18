@@ -154,8 +154,8 @@ const Navbar = () => {
                   className={({ isActive }) =>
                     `py-2 text-lg font-medium md:py-0 ${
                       isActive
-                        ? "text-red-600 font-bold"
-                        : "text-gray-700 hover:text-red-600"
+                        ? "text-blue-600 font-bold"
+                        : "text-gray-700 hover:text-blue-600"
                     }`
                   }
                   onClick={handleLinkClick}
