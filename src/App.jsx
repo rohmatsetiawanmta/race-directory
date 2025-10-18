@@ -6,7 +6,8 @@ import LoginPage from "./pages/LoginPage.jsx";
 import toast from "react-hot-toast";
 
 // --- Import Halaman Admin Baru ---
-import AdminDashboard from "./pages/admin/AdminDashboard.jsx"; // Halaman Admin Panel Utama
+import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
+import MasterDataPage from "./pages/admin/MasterDataPage.jsx";
 
 // --- Import Placeholder Components ---
 const MainPage = () => (
@@ -36,9 +37,7 @@ const ComingSoon = ({ title }) => (
     </div>
   </div>
 );
-const MasterDataPage = () => (
-  <ComingSoon title="Admin: Kelola Series & Event" />
-);
+// Hapus placeholder MasterDataPage (diganti dengan import di atas)
 const EventManagementPage = () => (
   <ComingSoon title="Admin: Kelola Series & Event" />
 );
@@ -58,6 +57,7 @@ const ProtectedRoute = ({ children, userRole, isLoading }) => {
     if (!isLoading && userRole !== "admin") {
       // Tampilkan pesan error hanya jika pengguna mencoba mengakses dan tidak memiliki akses
       if (userRole !== null) {
+        // Memperbaiki logika cek role
         toast.error("Anda tidak memiliki akses ke halaman admin.");
       }
       navigate("/login", { replace: true });
@@ -183,16 +183,16 @@ function App() {
                 {/* 1. Dashboard Utama Admin */}
                 <Route path="/" element={<AdminDashboard />} />
 
-                {/* 2. Manajemen Master Data (FR-A04) */}
+                {/* 2. Manajemen Master Data */}
                 <Route path="master" element={<MasterDataPage />} />
 
-                {/* 3. CRUD Series & Event (FR-A01, FR-A02) */}
+                {/* 3. CRUD Series & Event (FR-A01, FR-A02) - Placeholder */}
                 <Route path="events" element={<EventManagementPage />} />
 
-                {/* 4. Moderasi Event User (FR-A03) */}
+                {/* 4. Moderasi Event User (FR-A03) - Placeholder */}
                 <Route path="moderation" element={<ModerationPage />} />
 
-                {/* 5. Manajemen Pengguna/Peran (FR-A05) */}
+                {/* 5. Manajemen Pengguna/Peran (FR-A05) - Placeholder */}
                 <Route path="users" element={<UserManagementPage />} />
               </Routes>
             </ProtectedRoute>
