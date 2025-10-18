@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 // --- Import Halaman Admin Baru ---
 import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
 import MasterDataPage from "./pages/admin/MasterDataPage.jsx";
+import SeriesAndEventManagementPage from "./pages/admin/EventManagementPage.jsx";
 
 // --- Import Placeholder Components ---
 const MainPage = () => (
@@ -38,9 +39,7 @@ const ComingSoon = ({ title }) => (
   </div>
 );
 // Hapus placeholder MasterDataPage (diganti dengan import di atas)
-const EventManagementPage = () => (
-  <ComingSoon title="Admin: Kelola Series & Event" />
-);
+
 const ModerationPage = () => <ComingSoon title="Admin: Moderasi Event User" />; // Placeholder untuk FR-A03
 const UserManagementPage = () => (
   <ComingSoon title="Admin: Manajemen Pengguna" />
@@ -186,8 +185,11 @@ function App() {
                 {/* 2. Manajemen Master Data */}
                 <Route path="master" element={<MasterDataPage />} />
 
-                {/* 3. CRUD Series & Event (FR-A01, FR-A02) - Placeholder */}
-                <Route path="events" element={<EventManagementPage />} />
+                {/* 3. CRUD Series & Event */}
+                <Route
+                  path="events"
+                  element={<SeriesAndEventManagementPage />}
+                />
 
                 {/* 4. Moderasi Event User (FR-A03) - Placeholder */}
                 <Route path="moderation" element={<ModerationPage />} />

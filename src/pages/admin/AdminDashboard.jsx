@@ -38,11 +38,7 @@ const AdminDashboard = () => {
 
   const handleSoonClick = (e, to) => {
     // Mencegah navigasi jika rute belum diimplementasikan
-    if (
-      to === "/admin/events" ||
-      to === "/admin/moderation" ||
-      to === "/admin/users"
-    ) {
+    if (to === "/admin/moderation" || to === "/admin/users") {
       e.preventDefault();
       toast("Modul ini masih dalam tahap pengembangan.", {
         icon: "🚧",
