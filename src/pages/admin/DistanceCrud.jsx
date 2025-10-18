@@ -382,19 +382,18 @@ const DistanceCrud = () => {
 
   return (
     <div className="rounded-xl bg-white p-6 shadow-xl border border-gray-100 h-full flex flex-col">
-      <h3 className="mb-4 text-2xl font-semibold text-gray-800">
-        {displayName}
-      </h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-2xl font-semibold text-gray-800">{displayName}</h3>
 
-      {/* Tombol Tambah (Membuka Modal) */}
-      <button
-        onClick={openAddModal}
-        className="mb-6 flex items-center rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 transition shadow-md w-fit"
-        disabled={isActionDisabled}
-      >
-        <PlusCircle size={18} className="mr-2" /> Tambah {displayName}
-      </button>
-
+        {/* Tombol Tambah (Membuka Modal) */}
+        <button
+          onClick={openAddModal}
+          className="flex items-center rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 transition shadow-md w-fit"
+          disabled={isActionDisabled}
+        >
+          <PlusCircle size={18} className="mr-2" /> Tambah {displayName}
+        </button>
+      </div>
       {/* Tampilan Data - Menggunakan Tabel */}
       {isLoading ? (
         <div className="flex justify-center py-8 flex-grow items-center">
