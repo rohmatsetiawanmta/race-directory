@@ -133,7 +133,7 @@ const DistanceModal = ({
           {/* Field: Jarak KM */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Jarak (KM)
+              Jarak (km)
             </label>
             <input
               type="number"
