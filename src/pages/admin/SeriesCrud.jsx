@@ -11,9 +11,12 @@ import {
   Building2,
   AlertTriangle,
   ArrowLeft,
+  Save, // Import Save
+  X, // Import X
 } from "lucide-react";
 import { Link } from "react-router-dom";
-// import SeriesModal from "../../components/admin/SeriesModal.jsx"; // Anggap sudah ada
+// --- HILANGKAN KOMENTAR PADA IMPORT INI ---
+import SeriesModal from "../../components/admin/SeriesModal.jsx";
 // import DeleteConfirmationModal dari sini
 
 // --- KOMPONEN MODAL DELETE --- (Disertakan untuk kemandirian file)
@@ -51,7 +54,7 @@ const DeleteConfirmationModal = ({
           </button>
           <button
             onClick={() => onConfirm(item.id)}
-            className="rounded-lg bg-red-600 px-4 py-2 text-white font-semibold hover:bg-red-700 transition text-sm disabled:bg-gray-400"
+            className="flex items-center rounded-lg bg-red-600 px-4 py-2 text-white font-semibold hover:bg-red-700 transition text-sm disabled:bg-gray-400"
             disabled={isProcessing}
           >
             {isProcessing ? (
@@ -69,7 +72,7 @@ const DeleteConfirmationModal = ({
 // --- END MODAL DELETE ---
 
 // Asumsi SeriesModal diimpor dari tempat lain
-// const SeriesModal = ({...}) => {...};
+// Perlu membuat SeriesModal yang sudah di-import di atas
 
 const SeriesCrud = ({ navigateToEvents }) => {
   const tableName = "series";
@@ -106,7 +109,13 @@ const SeriesCrud = ({ navigateToEvents }) => {
         "id, series_name, organizer, description, location_city_main, series_official_url, created_at"
       )
       .order("series_name", { ascending: true });
-    if (!error) setSeriesList(data);
+
+    if (error) {
+      console.error(`Error fetching ${displayName}:`, error);
+      toast.error(`Gagal memuat daftar ${displayName}.`);
+    } else {
+      setSeriesList(data);
+    }
     setIsLoading(false);
   };
 
@@ -135,16 +144,94 @@ const SeriesCrud = ({ navigateToEvents }) => {
     setIsProcessing(false);
   };
 
-  // (Implementasi handleModalSubmit dan handleDeleteConfirm dihilangkan untuk fokus pada UI)
-
-  // Placeholder untuk fungsi submit/delete
+  // --- IMPLEMENTASI LOGIKA SUBMIT (ADD/EDIT) ---
   const handleModalSubmit = async (formData) => {
-    toast.error("Logika Submit Belum Penuh!");
-    closeModal();
+    if (isProcessing) return;
+
+    if (!formData.series_name.trim() || !formData.organizer.trim()) {
+      toast.error("Nama Series dan Penyelenggara wajib diisi.");
+      return;
+    }
+
+    setIsProcessing(true);
+
+    const payload = {
+      series_name: formData.series_name.trim(),
+      organizer: formData.organizer.trim(),
+      description: formData.description || null,
+      location_city_main: formData.location_city_main || null,
+      series_official_url: formData.series_official_url || null,
+    };
+
+    let result;
+    const toastId = toast.loading(
+      formData.id
+        ? `Memperbarui ${displayName}...`
+        : `Menambah ${displayName}...`
+    );
+
+    try {
+      if (formData.id) {
+        // Logic for EDIT (UPDATE)
+        result = await supabase
+          .from(tableName)
+          .update(payload)
+          .eq("id", formData.id);
+      } else {
+        // Logic for ADD (INSERT)
+        result = await supabase.from(tableName).insert([payload]);
+      }
+
+      if (result.error) throw result.error;
+
+      toast.success(
+        formData.id
+          ? `${displayName} berhasil diperbarui!`
+          : `${displayName} baru berhasil ditambahkan!`,
+        { id: toastId }
+      );
+      closeModal();
+      fetchSeries(); // Refresh list
+    } catch (error) {
+      console.error("Supabase Error:", error);
+      toast.error(`Gagal: ${error.message || "Kesalahan Server"}`, {
+        id: toastId,
+      });
+      setIsProcessing(false);
+    }
   };
+
+  // --- IMPLEMENTASI LOGIKA DELETE ---
   const handleDeleteConfirm = async (id) => {
-    toast.error("Logika Hapus Belum Penuh!");
-    closeDeleteModal();
+    if (isProcessing) return;
+
+    setIsProcessing(true);
+    const toastId = toast.loading(`Menghapus ${displayName}...`);
+
+    try {
+      const { error } = await supabase.from(tableName).delete().eq("id", id);
+
+      if (error) {
+        // Cek jika error adalah karena Foreign Key Constraint (ada Event yang terhubung)
+        const isForeignKeyError = error.code === "23503"; // Kode PostgreSQL untuk foreign_key_violation
+        if (isForeignKeyError) {
+          throw new Error(
+            "Gagal menghapus Series. Pastikan tidak ada Event Tahunan yang masih terhubung."
+          );
+        }
+        throw error;
+      }
+
+      toast.success(`${displayName} berhasil dihapus.`, { id: toastId });
+      closeDeleteModal();
+      fetchSeries(); // Refresh list
+    } catch (error) {
+      console.error("Delete Error:", error);
+      toast.error(`Gagal menghapus Series. Pesan: ${error.message}.`, {
+        id: toastId,
+      });
+      setIsProcessing(false);
+    }
   };
 
   const isActionDisabled = isProcessing || isModalOpen || isDeleteModalOpen;
@@ -196,19 +283,111 @@ const SeriesCrud = ({ navigateToEvents }) => {
           <Loader size={24} className="animate-spin text-blue-600" />
         </div>
       ) : seriesList.length === 0 ? (
-        <div className="text-center py-10 text-gray-500 italic bg-gray-50 rounded-xl">
+        <div className="text-center py-10 text-gray-500 italic bg-gray-50 rounded-xl border">
           Belum ada Series Event yang ditambahkan.
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl shadow-lg border">
           <table className="min-w-full divide-y divide-gray-200">
-            {/* ... table content */}
+            {/* --- HEAD TABLE --- */}
+            <thead className="bg-blue-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Nama Series
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Penyelenggara & Lokasi
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  URL Resmi
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase w-32">
+                  Aksi
+                </th>
+              </tr>
+            </thead>
+            {/* --- BODY TABLE --- */}
+            <tbody className="bg-white divide-y divide-gray-200">
+              {seriesList.map((series) => (
+                <tr
+                  key={series.id}
+                  className="hover:bg-gray-50 transition text-sm"
+                >
+                  <td className="px-4 py-4">
+                    <p className="font-semibold text-gray-900">
+                      {series.series_name}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate max-w-xs">
+                      {series.description || "Tidak ada deskripsi."}
+                    </p>
+                  </td>
+                  <td className="px-4 py-4">
+                    <p className="font-medium text-gray-700 flex items-center">
+                      <Building2 size={14} className="mr-1 text-gray-500" />
+                      {series.organizer}
+                    </p>
+                    {series.location_city_main && (
+                      <p className="text-xs text-gray-500 flex items-center mt-1">
+                        <MapPin size={12} className="mr-1" />
+                        {series.location_city_main}
+                      </p>
+                    )}
+                  </td>
+                  <td className="px-4 py-4">
+                    {series.series_official_url ? (
+                      <a
+                        href={series.series_official_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 text-xs flex items-center truncate max-w-[150px]"
+                      >
+                        <LinkIcon size={14} className="mr-1" />
+                        Link Series
+                      </a>
+                    ) : (
+                      <span className="text-gray-400 italic text-xs">
+                        Tidak ada URL
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-4 text-right">
+                    <button
+                      onClick={() => openEditModal(series)}
+                      className={`text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-100 transition mr-2 ${
+                        isActionDisabled ? "opacity-50" : ""
+                      }`}
+                      title="Edit Series"
+                      disabled={isActionDisabled}
+                    >
+                      <Edit size={18} />
+                    </button>
+                    <button
+                      onClick={() => openDeleteModal(series)}
+                      className={`text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-100 transition ${
+                        isActionDisabled ? "opacity-50" : ""
+                      }`}
+                      title="Hapus Series"
+                      disabled={isActionDisabled}
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
           </table>
         </div>
       )}
 
-      {/* Modal Tambah/Edit Series (Anggap SeriesModal sudah di-define/impor) */}
-      {/* <SeriesModal ... /> */}
+      {/* --- TAMBAHKAN KOMPONEN MODAL INI --- */}
+      <SeriesModal
+        isOpen={isModalOpen}
+        mode={modalMode}
+        initialData={currentSeries || initialFormState}
+        onClose={closeModal}
+        onSubmit={handleModalSubmit}
+        isProcessing={isProcessing}
+      />
 
       {/* Modal Konfirmasi Hapus Series */}
       <DeleteConfirmationModal

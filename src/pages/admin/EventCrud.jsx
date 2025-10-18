@@ -16,6 +16,8 @@ import {
   Ruler,
   Clock,
   Zap,
+  X,
+  Save,
 } from "lucide-react";
 
 // Enum to manage event registration status colors
