@@ -11,13 +11,11 @@ import {
   Building2,
   AlertTriangle,
   ArrowLeft,
-  Save, // Import Save
-  X, // Import X
+  Save,
+  X,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-// --- HILANGKAN KOMENTAR PADA IMPORT INI ---
 import SeriesModal from "../../components/admin/SeriesModal.jsx";
-// import DeleteConfirmationModal dari sini
 
 // --- KOMPONEN MODAL DELETE --- (Disertakan untuk kemandirian file)
 const DeleteConfirmationModal = ({
@@ -71,9 +69,6 @@ const DeleteConfirmationModal = ({
 };
 // --- END MODAL DELETE ---
 
-// Asumsi SeriesModal diimpor dari tempat lain
-// Perlu membuat SeriesModal yang sudah di-import di atas
-
 const SeriesCrud = ({ navigateToEvents }) => {
   const tableName = "series";
   const displayName = "Series Event";
@@ -92,7 +87,6 @@ const SeriesCrud = ({ navigateToEvents }) => {
   const initialFormState = {
     series_name: "",
     organizer: "",
-    description: "",
     location_city_main: "",
     series_official_url: "",
   };
@@ -106,7 +100,7 @@ const SeriesCrud = ({ navigateToEvents }) => {
     const { data, error } = await supabase
       .from(tableName)
       .select(
-        "id, series_name, organizer, description, location_city_main, series_official_url, created_at"
+        "id, series_name, organizer, location_city_main, series_official_url, created_at"
       )
       .order("series_name", { ascending: true });
 
@@ -158,7 +152,6 @@ const SeriesCrud = ({ navigateToEvents }) => {
     const payload = {
       series_name: formData.series_name.trim(),
       organizer: formData.organizer.trim(),
-      description: formData.description || null,
       location_city_main: formData.location_city_main || null,
       series_official_url: formData.series_official_url || null,
     };
@@ -238,7 +231,7 @@ const SeriesCrud = ({ navigateToEvents }) => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* --- REVISED HEADER: Tombol Back di Samping Judul --- */}
+      {/* Container untuk Tombol Back dan Judul (Sama seperti MasterDataPage) */}
       <div className="flex items-center mb-6">
         <Link
           to="/admin"
@@ -253,133 +246,152 @@ const SeriesCrud = ({ navigateToEvents }) => {
           Series Management
         </h1>
       </div>
-      {/* --- END REVISED HEADER --- */}
 
       <p className="text-gray-600 mb-8">
         Kelola Series (Induk event) untuk mengelompokkan Event tahunan.
       </p>
 
-      {/* Tombol Aksi */}
-      <div className="flex gap-4 mb-8">
-        <button
-          onClick={openAddModal}
-          className="flex items-center rounded-lg bg-green-600 px-6 py-2 text-white font-semibold hover:bg-green-700 transition shadow-md disabled:bg-gray-400"
-          disabled={isActionDisabled}
-        >
-          <PlusCircle size={20} className="mr-2" /> Tambah Series Baru
-        </button>
-        <button
-          onClick={() => navigateToEvents("event")}
-          className="flex items-center rounded-lg border border-blue-500 text-blue-600 px-6 py-2 font-semibold hover:bg-blue-50 transition shadow-sm disabled:opacity-50"
-          disabled={isActionDisabled}
-        >
-          Lihat Event Tahunan (FR-A02)
-        </button>
+      {/* Kontainer Utama Series CRUD (Mirip DistanceCrud) */}
+      <div className="rounded-xl bg-white p-6 shadow-xl border border-gray-100 h-full flex flex-col">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-2xl font-semibold text-gray-800">
+            {displayName}
+          </h3>
+
+          {/* Tombol Aksi Kanan */}
+          <div className="flex gap-3">
+            <button
+              onClick={() => navigateToEvents("event")}
+              className="flex items-center rounded-lg border border-blue-500 text-blue-600 px-4 py-2 font-semibold hover:bg-blue-50 transition shadow-sm disabled:opacity-50 text-sm"
+              disabled={isActionDisabled}
+            >
+              Lihat Event Tahunan
+            </button>
+            <button
+              onClick={openAddModal}
+              className="flex items-center rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700 transition shadow-md w-fit text-sm"
+              disabled={isActionDisabled}
+            >
+              <PlusCircle size={18} className="mr-2" /> Tambah {displayName}
+            </button>
+          </div>
+        </div>
+
+        {/* Daftar Series */}
+        {isLoading ? (
+          <div className="flex justify-center py-8 flex-grow items-center">
+            <Loader size={24} className="animate-spin text-blue-600" />
+          </div>
+        ) : seriesList.length === 0 ? (
+          <p className="text-gray-500 italic text-center py-8">
+            Belum ada Series Event yang ditambahkan.
+          </p>
+        ) : (
+          <div className="flex flex-col flex-grow overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              {/* --- HEAD TABLE --- */}
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-2/5">
+                    Nama Series
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/6">
+                    Penyelenggara
+                  </th>
+                  {/* KOLOM BARU 1: LOKASI KOTA UTAMA */}
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/6">
+                    Lokasi
+                  </th>
+                  {/* KOLOM BARU 2: URL RESMI */}
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/6">
+                    URL Resmi
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase w-1/6">
+                    Aksi
+                  </th>
+                </tr>
+              </thead>
+              {/* --- BODY TABLE --- */}
+              <tbody className="bg-white divide-y divide-gray-200">
+                {seriesList.map((series) => (
+                  <tr
+                    key={series.id}
+                    className="hover:bg-gray-50 transition text-sm"
+                  >
+                    <td className="px-4 py-3 w-2/5">
+                      <p className="font-semibold text-gray-900">
+                        {series.series_name}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 w-1/6">
+                      <p className="font-medium text-gray-700 flex items-center">
+                        {series.organizer}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 w-1/6">
+                      {series.location_city_main ? (
+                        <p className="text-sm text-gray-700 flex items-center">
+                          {series.location_city_main}
+                        </p>
+                      ) : (
+                        <span className="text-gray-400 italic text-xs">
+                          Belum ditentukan
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 w-1/6">
+                      {series.series_official_url ? (
+                        <a
+                          href={series.series_official_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 text-xs flex items-center truncate max-w-[150px]"
+                        >
+                          Link Series
+                        </a>
+                      ) : (
+                        <span className="text-gray-400 italic text-xs">
+                          Tidak ada URL
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right w-1/6">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => openEditModal(series)}
+                          className={`p-1 rounded-full ${
+                            isActionDisabled
+                              ? "text-gray-400"
+                              : "text-blue-600 hover:text-blue-800 hover:bg-blue-100 transition"
+                          }`}
+                          title="Edit Series"
+                          disabled={isActionDisabled}
+                        >
+                          <Edit size={18} />
+                        </button>
+                        <button
+                          onClick={() => openDeleteModal(series)}
+                          className={`p-1 rounded-full ${
+                            isActionDisabled
+                              ? "text-gray-400"
+                              : "text-red-600 hover:text-red-800 hover:bg-red-100 transition"
+                          }`}
+                          title="Hapus Series"
+                          disabled={isActionDisabled}
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {/* Daftar Series */}
-      {isLoading ? (
-        <div className="flex justify-center py-8">
-          <Loader size={24} className="animate-spin text-blue-600" />
-        </div>
-      ) : seriesList.length === 0 ? (
-        <div className="text-center py-10 text-gray-500 italic bg-gray-50 rounded-xl border">
-          Belum ada Series Event yang ditambahkan.
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-xl shadow-lg border">
-          <table className="min-w-full divide-y divide-gray-200">
-            {/* --- HEAD TABLE --- */}
-            <thead className="bg-blue-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Nama Series
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Penyelenggara & Lokasi
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  URL Resmi
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase w-32">
-                  Aksi
-                </th>
-              </tr>
-            </thead>
-            {/* --- BODY TABLE --- */}
-            <tbody className="bg-white divide-y divide-gray-200">
-              {seriesList.map((series) => (
-                <tr
-                  key={series.id}
-                  className="hover:bg-gray-50 transition text-sm"
-                >
-                  <td className="px-4 py-4">
-                    <p className="font-semibold text-gray-900">
-                      {series.series_name}
-                    </p>
-                    <p className="text-xs text-gray-500 truncate max-w-xs">
-                      {series.description || "Tidak ada deskripsi."}
-                    </p>
-                  </td>
-                  <td className="px-4 py-4">
-                    <p className="font-medium text-gray-700 flex items-center">
-                      <Building2 size={14} className="mr-1 text-gray-500" />
-                      {series.organizer}
-                    </p>
-                    {series.location_city_main && (
-                      <p className="text-xs text-gray-500 flex items-center mt-1">
-                        <MapPin size={12} className="mr-1" />
-                        {series.location_city_main}
-                      </p>
-                    )}
-                  </td>
-                  <td className="px-4 py-4">
-                    {series.series_official_url ? (
-                      <a
-                        href={series.series_official_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 text-xs flex items-center truncate max-w-[150px]"
-                      >
-                        <LinkIcon size={14} className="mr-1" />
-                        Link Series
-                      </a>
-                    ) : (
-                      <span className="text-gray-400 italic text-xs">
-                        Tidak ada URL
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-4 text-right">
-                    <button
-                      onClick={() => openEditModal(series)}
-                      className={`text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-100 transition mr-2 ${
-                        isActionDisabled ? "opacity-50" : ""
-                      }`}
-                      title="Edit Series"
-                      disabled={isActionDisabled}
-                    >
-                      <Edit size={18} />
-                    </button>
-                    <button
-                      onClick={() => openDeleteModal(series)}
-                      className={`text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-100 transition ${
-                        isActionDisabled ? "opacity-50" : ""
-                      }`}
-                      title="Hapus Series"
-                      disabled={isActionDisabled}
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* --- TAMBAHKAN KOMPONEN MODAL INI --- */}
+      {/* Modal Tambah/Edit Series (SeriesModal dari components) */}
       <SeriesModal
         isOpen={isModalOpen}
         mode={modalMode}
