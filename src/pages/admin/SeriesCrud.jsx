@@ -1,3 +1,4 @@
+// src/pages/admin/SeriesCrud.jsx
 import React, { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabaseClient.js";
 import toast from "react-hot-toast";
@@ -13,6 +14,7 @@ import {
   ArrowLeft,
   Save,
   X,
+  CircleArrowRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import SeriesModal from "../../components/admin/SeriesModal.jsx";
@@ -258,14 +260,14 @@ const SeriesCrud = ({ navigateToEvents }) => {
             {displayName}
           </h3>
 
-          {/* Tombol Aksi Kanan */}
+          {/* Tombol Aksi Kanan (Direvisi untuk navigasi ke SEMUA event) */}
           <div className="flex gap-3">
             <button
-              onClick={() => navigateToEvents("event")}
+              onClick={() => navigateToEvents("event", null)} // Navigasi ke event tanpa filter
               className="flex items-center rounded-lg border border-blue-500 text-blue-600 px-4 py-2 font-semibold hover:bg-blue-50 transition shadow-sm disabled:opacity-50 text-sm"
               disabled={isActionDisabled}
             >
-              Lihat Event Tahunan
+              Lihat Semua Event
             </button>
             <button
               onClick={openAddModal}
@@ -292,17 +294,15 @@ const SeriesCrud = ({ navigateToEvents }) => {
               {/* --- HEAD TABLE --- */}
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-2/5">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/6">
                     Nama Series
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/6">
-                    Penyelenggara
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/3">
+                    Penyelenggara Utama
                   </th>
-                  {/* KOLOM BARU 1: LOKASI KOTA UTAMA */}
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/6">
                     Lokasi
                   </th>
-                  {/* KOLOM BARU 2: URL RESMI */}
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/6">
                     URL Resmi
                   </th>
@@ -380,6 +380,18 @@ const SeriesCrud = ({ navigateToEvents }) => {
                           disabled={isActionDisabled}
                         >
                           <Trash2 size={18} />
+                        </button>
+                        <button
+                          onClick={() => navigateToEvents("event", series.id)} // <-- Kirim series.id
+                          className={`p-1 rounded-full ${
+                            isActionDisabled
+                              ? "text-gray-400"
+                              : "text-green-600 hover:text-green-800 hover:bg-green-100 transition"
+                          }`}
+                          title={`Lihat Event Tahunan di ${series.series_name}`}
+                          disabled={isActionDisabled}
+                        >
+                          <CircleArrowRight size={18} />
                         </button>
                       </div>
                     </td>

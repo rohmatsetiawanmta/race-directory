@@ -18,9 +18,9 @@ import {
   X,
   Save,
   Link as LinkIcon,
-  Map as MapIconComponent, // Ikon untuk lokasi RPC (digunakan untuk menghindari konflik dengan Map JavaScript)
-  ListChecks, // Ikon baru untuk detail tanggal RPC
-  Clock4, // Ikon baru untuk waktu flag off
+  Map as MapIconComponent,
+  ListChecks,
+  Clock4,
 } from "lucide-react";
 
 // Enum to manage event registration status colors (Dibiarkan untuk referensi list lama, meski status reg. dihapus dari form)
@@ -455,7 +455,7 @@ const EventModal = ({
               {/* Series ID */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Series Induk <span className="text-red-500">*</span>
+                  Series Induk
                 </label>
                 <select
                   name="series_id"
@@ -476,7 +476,7 @@ const EventModal = ({
               {/* Event Year */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tahun Event <span className="text-red-500">*</span>
+                  Tahun Event
                 </label>
                 <input
                   type="number"
@@ -495,7 +495,7 @@ const EventModal = ({
             {/* BARU: Input Lokasi Event (Full Width) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Lokasi Event <span className="text-red-500">*</span>
+                Lokasi Event
               </label>
               <input
                 type="text"
@@ -539,7 +539,7 @@ const EventModal = ({
               {/* Date Start */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tanggal Mulai <span className="text-red-500">*</span>
+                  Tanggal Mulai
                 </label>
                 <input
                   type="date"
@@ -555,7 +555,7 @@ const EventModal = ({
               {formState.is_multiday && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tanggal Selesai <span className="text-red-500">*</span>
+                    Tanggal Selesai
                   </label>
                   <input
                     type="date"
@@ -652,9 +652,8 @@ const EventModal = ({
                   <div className="grid grid-cols-12 gap-3 mt-4">
                     {/* Kolom 1: Jarak (Dropdown) - 3 kolom */}
                     <div className="col-span-12 sm:col-span-3">
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                      <label className="flex text-xs font-medium text-gray-500 mb-1">
                         <Ruler size={12} className="mr-1 inline" /> Jarak
-                        (Master)
                       </label>
                       <select
                         value={dist.distance_id}
@@ -688,8 +687,8 @@ const EventModal = ({
 
                     {/* Kolom 2: Harga - 2 kolom */}
                     <div className="col-span-12 sm:col-span-2">
-                      <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center">
-                        <DollarSign size={12} className="mr-1" /> Harga Min
+                      <label className="text-xs font-medium text-gray-500 mb-1 flex items-center">
+                        <DollarSign size={12} className="mr-1" /> Harga Normal
                       </label>
                       <input
                         type="number"
@@ -710,9 +709,8 @@ const EventModal = ({
 
                     {/* Kolom 3: Flag Off Date - 3 kolom */}
                     <div className="col-span-12 sm:col-span-3">
-                      <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center">
-                        <Calendar size={12} className="mr-1" /> Flag Off Date{" "}
-                        <span className="text-red-500">*</span>
+                      <label className="text-xs font-medium text-gray-500 mb-1 flex items-center">
+                        <Calendar size={12} className="mr-1" /> Flag Off Date
                       </label>
                       <input
                         type="date"
@@ -732,7 +730,7 @@ const EventModal = ({
 
                     {/* Kolom 4: Flag Off Time - 2 kolom */}
                     <div className="col-span-12 sm:col-span-2">
-                      <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center">
+                      <label className="text-xs font-medium text-gray-500 mb-1 flex items-center">
                         <Clock4 size={12} className="mr-1" /> Flag Off Time
                       </label>
                       <input
@@ -753,7 +751,7 @@ const EventModal = ({
 
                     {/* Kolom 5: COT (HH:MM) - 2 kolom */}
                     <div className="col-span-12 sm:col-span-2">
-                      <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center">
+                      <label className="text-xs font-medium text-gray-500 mb-1 flex items-center">
                         <Clock size={12} className="mr-1" /> COT (HH:MM)
                       </label>
                       <input
@@ -810,7 +808,7 @@ const EventModal = ({
                     <div className="w-full pr-4">
                       <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
                         <MapPin size={14} className="mr-1 text-gray-500" /> Nama
-                        Lokasi/Venue <span className="text-red-500">*</span>
+                        Lokasi/Venue
                       </label>
                       <input
                         type="text"
@@ -863,7 +861,7 @@ const EventModal = ({
                       >
                         <div className="col-span-4">
                           <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Tanggal <span className="text-red-500">*</span>
+                            Tanggal
                           </label>
                           <input
                             type="date"
@@ -1030,7 +1028,8 @@ const EventModal = ({
   );
 };
 
-const EventCrud = ({ navigateToEvents }) => {
+// Tambahkan seriesIdToFilter sebagai prop
+const EventCrud = ({ navigateToEvents, seriesIdToFilter }) => {
   const tableName = "events";
   const displayName = "Event Tahunan";
 
@@ -1053,7 +1052,7 @@ const EventCrud = ({ navigateToEvents }) => {
   // Fetch master and event data on mount
   useEffect(() => {
     fetchMasterData();
-  }, []);
+  }, [seriesIdToFilter]); // <-- Tambahkan dependency filter
 
   const fetchMasterData = async () => {
     const [seriesRes, distRes, rtRes] = await Promise.all([
@@ -1090,47 +1089,59 @@ const EventCrud = ({ navigateToEvents }) => {
       fetchedDistances.map((d) => [d.id, d.distance_name])
     );
 
+    // Panggil fetchEvents setelah data master siap
     fetchEvents(fetchedSeries, distanceNameMap);
   };
 
   // Fetch Event List with Series Name and nested details
-  const fetchEvents = useCallback(async (fetchedSeries, distanceNameMap) => {
-    setIsLoading(true);
+  // Tambahkan seriesIdToFilter sebagai dependency
+  const fetchEvents = useCallback(
+    async (fetchedSeries, distanceNameMap) => {
+      setIsLoading(true);
 
-    const { data, error } = await supabase
-      .from(tableName)
-      .select(
+      let query = supabase.from(tableName).select(
         `
                 id, event_year, date_start, date_end, is_published, rpc_info, event_location,
                 results_link, docs_link, series_id,
                 event_distances!inner(distance_id, price_min, cut_off_time_hrs, flag_off_time),
                 event_race_types!inner(type_id)
             `
-      )
-      .order("date_start", { ascending: false });
+      );
 
-    if (error) {
-      console.error("Error fetching Events:", error);
-      toast.error("Gagal memuat daftar Events.");
-    } else {
-      const seriesMap = new Map(fetchedSeries.map((s) => [s.id, s]));
-      const processedData = data.map((event) => ({
-        ...event,
-        series_name:
-          seriesMap.get(event.series_id)?.series_name ||
-          "Series Tidak Ditemukan",
-        // Menggunakan event_location untuk kolom Lokasi
-        location_city_main: event.event_location || "N/A",
-        // Menambahkan nama jarak ke event object
-        distance_names: event.event_distances.map((d) => ({
-          id: d.distance_id,
-          name: distanceNameMap.get(d.distance_id) || "Jarak Tidak Dikenal",
-        })),
-      }));
-      setEventsList(processedData);
-    }
-    setIsLoading(false);
-  }, []);
+      // LOGIKA FILTER BARU: Terapkan filter jika seriesIdToFilter ada
+      if (seriesIdToFilter) {
+        query = query.eq("series_id", seriesIdToFilter);
+      }
+      // END LOGIKA FILTER BARU
+
+      const { data, error } = await query.order("date_start", {
+        ascending: false,
+      });
+
+      if (error) {
+        console.error("Error fetching Events:", error);
+        toast.error("Gagal memuat daftar Events.");
+      } else {
+        const seriesMap = new Map(fetchedSeries.map((s) => [s.id, s]));
+        const processedData = data.map((event) => ({
+          ...event,
+          series_name:
+            seriesMap.get(event.series_id)?.series_name ||
+            "Series Tidak Ditemukan",
+          // Menggunakan event_location untuk kolom Lokasi
+          location_city_main: event.event_location || "N/A",
+          // Menambahkan nama jarak ke event object
+          distance_names: event.event_distances.map((d) => ({
+            id: d.distance_id,
+            name: distanceNameMap.get(d.distance_id) || "Jarak Tidak Dikenal",
+          })),
+        }));
+        setEventsList(processedData);
+      }
+      setIsLoading(false);
+    },
+    [seriesIdToFilter]
+  ); // <-- Tambahkan dependency filter
 
   // --- MODAL & DELETE CONTROL ---
 
@@ -1298,13 +1309,20 @@ const EventCrud = ({ navigateToEvents }) => {
 
   const isActionDisabled = isProcessing || isModalOpen || isDeleteModalOpen;
 
+  // Modifikasi Tampilan Event Management: Tambahkan Judul Sub-Page Dinamis
+  const selectedSeries = seriesList.find((s) => s.id === seriesIdToFilter);
+  const pageTitle = seriesIdToFilter
+    ? `Event Tahunan Series: ${selectedSeries?.series_name || "Memuat..."}`
+    : "Event Management";
+
   // --- UI UTAMA (Sesuai dengan SeriesCrud) ---
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Tombol Back & Judul */}
       <div className="flex items-center mb-6">
         <button
-          onClick={() => navigateToEvents("series")}
+          // Tombol ini selalu kembali ke Series View, dengan filter null
+          onClick={() => navigateToEvents("series", null)}
           className="p-2 rounded-full text-gray-600 hover:bg-gray-200 hover:text-gray-800 transition mr-4 flex-shrink-0"
           title="Kembali ke Daftar Series"
           disabled={isActionDisabled}
@@ -1313,12 +1331,16 @@ const EventCrud = ({ navigateToEvents }) => {
         </button>
 
         <h1 className="text-4xl font-extrabold text-gray-900 flex-grow">
-          Event Management
+          {pageTitle}
         </h1>
       </div>
 
       <p className="text-gray-600 mb-8">
-        Kelola Event spesifik untuk setiap tahun di bawah Series yang tersedia.
+        {seriesIdToFilter
+          ? `Menampilkan event yang terhubung dengan series: ${
+              selectedSeries?.series_name || "Memuat..."
+            }.`
+          : "Kelola Event spesifik untuk setiap tahun di bawah Series yang tersedia."}
       </p>
 
       {/* Kontainer Utama Event CRUD (Mengikuti style SeriesCrud) */}
