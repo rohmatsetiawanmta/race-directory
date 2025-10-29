@@ -5,7 +5,7 @@ import { supabase } from "../lib/supabaseClient";
 
 // Item Navigasi utama dikosongkan
 const navItems = [
-  // { name: "Direktori Event", to: "/events" },
+  { name: "Direktori Event", to: "/events" },
   // { name: "Cara Mendaftar", to: "/guide" },
   // { name: "Submit Event", to: "/submit" },
 ];

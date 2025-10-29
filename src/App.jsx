@@ -10,6 +10,10 @@ import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
 import MasterDataPage from "./pages/admin/MasterDataPage.jsx";
 import SeriesAndEventManagementPage from "./pages/admin/EventManagementPage.jsx";
 
+// --- Import Halaman Publik Baru ---
+import EventDirectoryPage from "./pages/EventDirectoryPage.jsx";
+import EventDetailPage from "./pages/EventDetailPage.jsx";
+
 // --- Import Placeholder Components ---
 const MainPage = () => (
   <div className="container mx-auto px-4 py-8">
@@ -40,10 +44,10 @@ const ComingSoon = ({ title }) => (
 );
 // Hapus placeholder MasterDataPage (diganti dengan import di atas)
 
-const ModerationPage = () => <ComingSoon title="Admin: Moderasi Event User" />; // Placeholder untuk FR-A03
+const ModerationPage = () => <ComingSoon title="Admin: Moderasi Event User" />;
 const UserManagementPage = () => (
   <ComingSoon title="Admin: Manajemen Pengguna" />
-); // Placeholder untuk FR-A05
+);
 const UserDashboardPage = () => <ComingSoon title="Dashboard Pengguna" />;
 const UserBookmarksPage = () => <ComingSoon title="Event Favorit" />;
 
@@ -155,10 +159,10 @@ function App() {
         {/* Rute Utama dan Publik */}
         <Route path="/" element={<MainPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route
-          path="/events"
-          element={<ComingSoon title="Direktori Event" />}
-        />
+
+        <Route path="/events" element={<EventDirectoryPage />} />
+        <Route path="/events/:eventId" element={<EventDetailPage />} />
+
         <Route
           path="/guide"
           element={<ComingSoon title="Panduan Mendaftar" />}
