@@ -15,21 +15,23 @@ import {
   Clock4,
   ArrowLeft,
   Image,
-  Banknote,
   Wallet,
-  FlagTriangleLeft,
-  FlagTriangleRight,
   Flag,
+  Route,
 } from "lucide-react";
 
 // Helper function (Duplikasi dari EventCrud untuk kemandirian)
-const formatHoursToHHMM = (totalHours) => {
+const formatHours = (totalHours) => {
   if (typeof totalHours !== "number" || isNaN(totalHours) || totalHours < 0)
     return "00:00";
   const hours = Math.floor(totalHours);
   const minutes = Math.round((totalHours - hours) * 60);
   const pad = (num) => String(num).padStart(2, "0");
-  return `${pad(hours)}:${pad(minutes)}`;
+  if (minutes === 0) {
+    return `${hours} jam`;
+  } else {
+    return `${hours} jam ${minutes} menit`;
+  }
 };
 
 const formatCurrency = (amount) => {
@@ -177,44 +179,90 @@ const EventDetailPage = () => {
           Series oleh {series.organizer}
         </p>
 
-        {/* Ringkasan */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 pb-6">
-          <div className="flex items-start">
-            <Calendar
-              size={24}
-              className="text-red-600 mr-3 mt-1 flex-shrink-0"
-            />
-            <div>
-              <p className="text-sm font-medium text-gray-500">Tanggal Event</p>
-              <p className="font-bold text-gray-800">{dateRange}</p>
-            </div>
-          </div>
-          <div className="flex items-start">
-            <MapPin
-              size={24}
-              className="text-green-600 mr-3 mt-1 flex-shrink-0"
-            />
-            <div>
-              <p className="text-sm font-medium text-gray-500">Lokasi</p>
-              <p className="font-bold text-gray-800">{event_location}</p>
-            </div>
-          </div>
-          <div className="flex items-start">
-            <Flag
-              size={24}
-              className="text-yellow-600 mr-3 mt-1 flex-shrink-0"
-            />
-            <div>
-              <p className="text-sm font-medium text-gray-500">Tipe Lomba</p>
-              <p className="font-bold text-gray-800">{raceTypes}</p>
-            </div>
-          </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600 mb-8 border-b pb-4">
+          <a
+            href="#price"
+            className="hover:text-blue-600 font-semibold transition"
+          >
+            Biaya Pendaftaran
+          </a>
+          <span className="text-gray-300">|</span>
+          <a
+            href="#schedule"
+            className="hover:text-blue-600 font-semibold transition"
+          >
+            Jadwal Race
+          </a>
+          <span className="text-gray-300">|</span>
+          <a
+            href="#route"
+            className="hover:text-blue-600 font-semibold transition"
+          >
+            Rute Lomba
+          </a>
+          <span className="text-gray-300">|</span>
+          <a
+            href="#rpc"
+            className="hover:text-blue-600 font-semibold transition"
+          >
+            RPC Info
+          </a>
+          <span className="text-gray-300">|</span>
+          <a
+            href="#links"
+            className="hover:text-blue-600 font-semibold transition"
+          >
+            Link
+          </a>
         </div>
 
         {/* ============================================== */}
-        {/* SECTION 1: HARGA JARAK LOMBA */}
+        {/* SECTION: OVERVIEW RACE */}
         {/* ============================================== */}
         <section className="mb-10 pt-4">
+          <h2 className="text-3xl font-bold text-gray-800 mb-6 flex items-center">
+            <Ruler size={28} className="mr-3 text-red-600" /> Overview Race
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 pb-6">
+            <div className="flex items-start">
+              <Calendar
+                size={24}
+                className="text-red-600 mr-3 mt-1 flex-shrink-0"
+              />
+              <div>
+                <p className="text-sm font-medium text-gray-500">
+                  Tanggal Event
+                </p>
+                <p className="font-bold text-gray-800">{dateRange}</p>
+              </div>
+            </div>
+            <div className="flex items-start">
+              <MapPin
+                size={24}
+                className="text-green-600 mr-3 mt-1 flex-shrink-0"
+              />
+              <div>
+                <p className="text-sm font-medium text-gray-500">Lokasi</p>
+                <p className="font-bold text-gray-800">{event_location}</p>
+              </div>
+            </div>
+            <div className="flex items-start">
+              <Flag
+                size={24}
+                className="text-yellow-600 mr-3 mt-1 flex-shrink-0"
+              />
+              <div>
+                <p className="text-sm font-medium text-gray-500">Tipe Lomba</p>
+                <p className="font-bold text-gray-800">{raceTypes}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ============================================== */}
+        {/* SECTION 1: HARGA JARAK LOMBA (CARD GRID) */}
+        {/* ============================================== */}
+        <section id="price" className="mb-10 pt-4">
           <h2 className="text-3xl font-bold text-gray-800 mb-6 flex items-center">
             <Wallet size={28} className="mr-3 text-blue-600" /> Biaya
             Pendaftaran
@@ -224,69 +272,64 @@ const EventDetailPage = () => {
             {event_distances.map((dist) => (
               <div
                 key={dist.id}
-                className="p-5 rounded-xl border-l-4 border-blue-500 shadow-md bg-white"
+                className="p-5 rounded-xl border-l-4 border-blue-500 shadow-lg bg-white"
               >
-                <p className="text-xs font-medium text-gray-500 mb-2">
+                <p className="text-md font-medium text-gray-500">
                   {dist.distances.distance_name}
                 </p>
-                <p className="text-3xl font-extrabold text-blue-900">
+                <p className="text-xl font-extrabold text-blue-900">
                   {formatCurrency(dist.price_min)}
                 </p>
-                <p className="text-sm text-gray-500 mt-1">Harga Normal</p>
               </div>
             ))}
           </div>
         </section>
 
         {/* ============================================== */}
-        {/* SECTION 2: FLAG OFF & CUT OFF TIME */}
+        {/* SECTION 2: FLAG OFF & CUT OFF TIME (CARD PER JARAK) */}
         {/* ============================================== */}
-        <section className="mb-10 pt-4">
+        <section id="schedule" className="mb-10 pt-4">
           <h2 className="text-3xl font-bold text-gray-800 mb-6 flex items-center">
-            <Clock4 size={28} className="mr-3 text-red-600" /> Detail Race
+            <Clock4 size={28} className="mr-3 text-red-600" /> Jadwal Race
           </h2>
 
-          <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-6">
             {event_distances.map((dist) => (
               <div
                 key={dist.id}
-                className="p-5 rounded-xl border border-red-200 shadow-md bg-white"
+                className="p-5 rounded-xl shadow-lg bg-white border-l-4 border-red-500 " // Card utama menggunakan shadow
               >
-                <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-3">
+                <h3 className="text-lg font-bold text-gray-900 pb-2 mb-4">
                   {dist.distances.distance_name}
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Flag Off */}
-                  <div className="border p-3 rounded-lg bg-red-50/50">
+                  {/* DETAIL 1: Flag Off Combined Date/Time (2 Kolom) */}
+                  <div className="p-4 rounded-lg bg-red-50 shadow-md">
                     <p className="text-xs font-medium text-red-600 mb-1 flex items-center">
-                      <Clock4 size={14} className="mr-1" /> Flag Off (Start)
+                      <Clock4 size={14} className="mr-1" /> Flag Off
                     </p>
-                    <p className="text-base font-bold text-gray-800 leading-snug">
+                    <p className="text-xl font-bold text-gray-800 leading-snug">
                       {new Date(dist.flag_off_time).toLocaleDateString(
                         "id-ID",
                         {
                           day: "numeric",
                           month: "long",
+                          year: "numeric",
                         }
-                      )}{" "}
-                      <span className="text-xl font-extrabold text-red-700">
-                        {dist.flag_off_time.substring(11, 16)}
-                      </span>{" "}
-                      WIB
+                      )}
+                      ,<br />
+                      {dist.flag_off_time.substring(11, 16)} WIB
                     </p>
                   </div>
 
-                  {/* COT */}
-                  <div className="border p-3 rounded-lg bg-indigo-50/50">
+                  {/* DETAIL 2: COT (1 Kolom) */}
+                  <div className="p-4 rounded-lg bg-indigo-50 shadow-md">
                     <p className="text-xs font-medium text-indigo-600 mb-1 flex items-center">
                       <Clock size={14} className="mr-1" /> Cut Off Time (COT)
                     </p>
                     <p className="text-xl font-extrabold text-indigo-700">
-                      {formatHoursToHHMM(dist.cut_off_time_hrs)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Waktu maksimal untuk finish.
+                      {formatHours(dist.cut_off_time_hrs)}
                     </p>
                   </div>
                 </div>
@@ -296,25 +339,25 @@ const EventDetailPage = () => {
         </section>
 
         {/* ============================================== */}
-        {/* SECTION 3: GAMBAR RUTE LOMBA */}
+        {/* SECTION 3: GAMBAR RUTE LOMBA (GRID) */}
         {/* ============================================== */}
-        <section className="mb-10 pt-4">
+        <section id="route" className="mb-10 pt-4">
           <h2 className="text-3xl font-bold text-gray-800 mb-6 flex items-center">
-            <Image size={28} className="mr-3 text-green-600" /> Gambar Rute
-            Lomba
+            <Route size={28} className="mr-3 text-green-600" /> Rute Lomba
           </h2>
 
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {event_distances.map((dist) => (
               <div
                 key={dist.id}
-                className="p-5 rounded-xl border border-green-200 shadow-md bg-white"
+                className="rounded-xl border border-green-200 shadow-md overflow-hidden bg-green-100/50"
               >
-                <h3 className="text-lg font-bold text-gray-900 border-b pb-2 mb-3">
+                <h3 className="text-lg font-bold text-gray-900 pt-3 text-center">
                   {dist.distances.distance_name}
                 </h3>
 
-                <div className="p-4 rounded-lg bg-green-50/50">
+                {/* Container Image - Hapus padding/bg hijau di sini */}
+                <div className="p-3">
                   {dist.route_image_url ? (
                     <a
                       href={dist.route_image_url}
@@ -325,15 +368,13 @@ const EventDetailPage = () => {
                       <img
                         src={dist.route_image_url}
                         alt={`Rute Lomba ${dist.distances.distance_name}`}
-                        className="w-full h-auto max-h-96 object-contain rounded-lg shadow-md border"
+                        // Penyesuaian untuk mengisi ruang dan menghilangkan whitespace
+                        className="h-full w-auto object-contain rounded-lg shadow-md border"
                       />
-                      <p className="text-xs text-gray-700 mt-2 text-center hover:underline italic font-semibold">
-                        Klik gambar untuk melihat resolusi penuh
-                      </p>
                     </a>
                   ) : (
-                    <div className="p-8 text-center bg-white border-dashed border-2 rounded-lg text-gray-500 italic">
-                      Gambar Rute untuk jarak ini belum tersedia.
+                    <div className="p-8 text-center bg-gray-50 border-dashed border-2 rounded-lg text-gray-500 italic">
+                      Gambar Rute belum tersedia.
                     </div>
                   )}
                 </div>
@@ -342,32 +383,38 @@ const EventDetailPage = () => {
           </div>
         </section>
 
-        {/* 2. Race Pack Collection (RPC) Info */}
-        <section className="mb-10 pt-4">
+        {/* ============================================== */}
+        {/* SECTION 4: Race Pack Collection (RPC) Info (UI Improved) */}
+        {/* ============================================== */}
+        <section id="rpc" className="mb-10 pt-4">
           <h2 className="text-3xl font-bold text-gray-800 mb-6 flex items-center">
             <Layers size={28} className="mr-3 text-yellow-600" /> Race Pack
-            Collection
+            Collection Info
           </h2>
-          <div className="space-y-6">
+          <div className="space-y-4">
             {rpc_info &&
               rpc_info.length > 0 &&
               rpc_info.map((loc, index) => (
                 <div
                   key={index}
-                  className="p-5 border rounded-xl shadow-md bg-white"
+                  // UI bersih: border kiri kuning, bg abu-abu, shadow kecil
+                  className="p-4 rounded-xl border-l-4 border-yellow-500 shadow-sm bg-gray-50"
                 >
-                  <h3 className="text-xl font-bold text-gray-800 mb-3 flex items-center">
+                  <h3 className="text-xl font-bold text-gray-800 mb-2 flex items-center">
                     <MapPin size={20} className="mr-2 text-blue-500" />
                     {loc.location_name}
                   </h3>
-                  <ul className="space-y-2 pl-2">
+                  <ul className="space-y-1 text-sm pl-2">
                     {loc.dates.map((dateItem, dateIndex) => (
                       <li
                         key={dateIndex}
-                        className="text-gray-700 text-sm flex items-center"
+                        className="text-gray-700 flex items-center"
                       >
-                        <Calendar size={14} className="mr-2 text-gray-500" />
-                        <span className="font-semibold mr-2">
+                        <Calendar
+                          size={14}
+                          className="mr-2 text-gray-500 flex-shrink-0"
+                        />
+                        <span className="font-semibold mr-2 flex-shrink-0">
                           {formatDate(dateItem.date)}:
                         </span>
                         {dateItem.time_start} - {dateItem.time_end} WIB
@@ -379,8 +426,10 @@ const EventDetailPage = () => {
           </div>
         </section>
 
-        {/* 3. Link Eksternal */}
-        <section className="mt-8 pt-6 border-t">
+        {/* ============================================== */}
+        {/* SECTION 5: Link Eksternal */}
+        {/* ============================================== */}
+        <section id="links" className="mt-8 pt-6">
           <h2 className="text-3xl font-bold text-gray-800 mb-6 flex items-center">
             <LinkIcon size={28} className="mr-3 text-indigo-600" /> Link &
             Dokumen
