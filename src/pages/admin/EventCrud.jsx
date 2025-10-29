@@ -18,9 +18,9 @@ import {
   X,
   Save,
   Link as LinkIcon,
-  Map as MapIconComponent,
-  ListChecks,
-  Clock4,
+  Map as MapIconComponent, // Ikon untuk lokasi RPC (digunakan untuk menghindari konflik dengan Map JavaScript)
+  ListChecks, // Ikon baru untuk detail tanggal RPC
+  Clock4, // Ikon baru untuk waktu flag off
 } from "lucide-react";
 
 // Enum to manage event registration status colors (Dibiarkan untuk referensi list lama, meski status reg. dihapus dari form)
@@ -158,6 +158,10 @@ const EventModal = ({
 
   const [formState, setFormState] = useState(initialData || initialFormState);
 
+  // STATE BARU untuk mengelola status upload file
+  const [uploading, setUploading] = useState({}); // { index: boolean }
+  const [uploadError, setUploadError] = useState({}); // { index: string }
+
   useEffect(() => {
     if (initialData && initialData.id) {
       setFormState({
@@ -194,6 +198,7 @@ const EventModal = ({
                 cut_off_time_hrs_display: formatHoursToHHMM(d.cut_off_time_hrs),
                 flag_off_time: flagOffTime, // HH:MM
                 flag_off_date: flagOffDate, // YYYY-MM-DD
+                route_image_url: d.route_image_url || "", // <-- Ambil URL Gambar Rute
               };
             })
           : [],
@@ -206,6 +211,9 @@ const EventModal = ({
         series_id: seriesList[0]?.id || "",
       });
     }
+    // Reset status upload saat modal dibuka
+    setUploading({});
+    setUploadError({});
   }, [initialData, mode, seriesList]);
 
   const handleFormChange = (e) => {
@@ -248,9 +256,101 @@ const EventModal = ({
     } else if (field === "flag_off_time" || field === "flag_off_date") {
       // Handle date dan time terpisah
       newDistances[index][field] = value;
+    } else if (field === "route_image_url") {
+      // <-- Handle link gambar
+      newDistances[index][field] = value;
     }
 
     setFormState((prev) => ({ ...prev, distances: newDistances }));
+  };
+
+  // FUNGSI BARU: Mengunggah file ke Supabase Storage
+  const handleFileUpload = async (e, index) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validasi dasar
+    if (file.size > 5 * 1024 * 1024) {
+      // Max 5MB
+      setUploadError((prev) => ({
+        ...prev,
+        [index]: "Ukuran file maksimal 5MB.",
+      }));
+      return;
+    }
+
+    setUploading((prev) => ({ ...prev, [index]: true }));
+    setUploadError((prev) => ({ ...prev, [index]: "" }));
+
+    const seriesData = seriesList.find((s) => s.id === formState.series_id);
+    const distanceData = distanceOptions.find(
+      (d) => d.id === formState.distances[index].distance_id
+    );
+
+    // Pastikan data penting tersedia
+    if (!seriesData || !distanceData) {
+      setUploadError((prev) => ({
+        ...prev,
+        [index]: "Pilih Series dan Jarak dulu sebelum mengunggah.",
+      }));
+      setUploading((prev) => ({ ...prev, [index]: false }));
+      e.target.value = null;
+      return;
+    }
+
+    const seriesNameSlug = seriesData.series_name
+      .toLowerCase()
+      .replace(/\s/g, "-");
+    const eventYear = formState.event_year;
+    const distanceNameSlug = distanceData.distance_name
+      .toLowerCase()
+      .replace(/\s/g, "-");
+
+    // Buat path unik: event-routes/series-slug/year/distance-slug/unique-timestamp-filename
+    const uniqueFileName = `${distanceNameSlug}-${Date.now()}-${file.name.replace(
+      /\s/g,
+      "-"
+    )}`;
+    const uniquePath = `event-routes/${seriesNameSlug}/${eventYear}/${uniqueFileName}`;
+
+    try {
+      // Upload file ke bucket 'event-assets'
+      const { error: uploadError } = await supabase.storage
+        .from("event-assets") // Asumsi nama bucket adalah 'event-assets'
+        .upload(uniquePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Dapatkan URL publik
+      const { data: publicUrlData } = supabase.storage
+        .from("event-assets")
+        .getPublicUrl(uniquePath);
+
+      if (publicUrlData && publicUrlData.publicUrl) {
+        // Update formState dengan URL publik
+        handleDistanceChange(index, "route_image_url", publicUrlData.publicUrl);
+        toast.success(
+          `Gambar rute ${distanceData.distance_name} berhasil diunggah!`
+        );
+      } else {
+        throw new Error("Gagal mendapatkan URL publik.");
+      }
+    } catch (error) {
+      console.error("Upload Error:", error);
+      const errorMessage = error.message.includes("duplicate key value")
+        ? "File sudah ada atau path tidak unik. Coba ganti nama file."
+        : error.message || "Gagal mengunggah file.";
+      setUploadError((prev) => ({ ...prev, [index]: errorMessage }));
+      toast.error(`Gagal mengunggah gambar rute: ${errorMessage}`);
+      e.target.value = null;
+    } finally {
+      setUploading((prev) => ({ ...prev, [index]: false }));
+    }
   };
 
   const addDistance = () => {
@@ -265,6 +365,7 @@ const EventModal = ({
           cut_off_time_hrs_display: "00:00",
           flag_off_time: "05:00", // Default HH:MM
           flag_off_date: formState.date_start || "", // Default ke tanggal mulai event
+          route_image_url: "", // <-- Field untuk URL Gambar Rute
         },
       ],
     }));
@@ -366,12 +467,18 @@ const EventModal = ({
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    // Cek apakah ada proses upload yang masih berjalan
+    if (Object.values(uploading).some((status) => status)) {
+      toast.error("Tunggu hingga proses upload gambar rute selesai.");
+      return;
+    }
+
     // Validasi Dasar
     if (
       !formState.series_id ||
       !formState.event_year ||
       !formState.date_start ||
-      !formState.event_location.trim() // BARU: Validasi Lokasi Event
+      !formState.event_location.trim()
     ) {
       toast.error(
         "Series, Tahun, Tanggal Mulai, dan Lokasi Event wajib diisi."
@@ -455,7 +562,7 @@ const EventModal = ({
               {/* Series ID */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Series Induk
+                  Series Induk <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="series_id"
@@ -476,7 +583,7 @@ const EventModal = ({
               {/* Event Year */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tahun Event
+                  Tahun Event <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -495,7 +602,7 @@ const EventModal = ({
             {/* BARU: Input Lokasi Event (Full Width) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Lokasi Event
+                Lokasi Event <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -539,7 +646,7 @@ const EventModal = ({
               {/* Date Start */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tanggal Mulai
+                  Tanggal Mulai <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="date"
@@ -555,7 +662,7 @@ const EventModal = ({
               {formState.is_multiday && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tanggal Selesai
+                    Tanggal Selesai <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
@@ -652,8 +759,9 @@ const EventModal = ({
                   <div className="grid grid-cols-12 gap-3 mt-4">
                     {/* Kolom 1: Jarak (Dropdown) - 3 kolom */}
                     <div className="col-span-12 sm:col-span-3">
-                      <label className="flex text-xs font-medium text-gray-500 mb-1">
+                      <label className="block text-xs font-medium text-gray-500 mb-1">
                         <Ruler size={12} className="mr-1 inline" /> Jarak
+                        (Master)
                       </label>
                       <select
                         value={dist.distance_id}
@@ -687,8 +795,8 @@ const EventModal = ({
 
                     {/* Kolom 2: Harga - 2 kolom */}
                     <div className="col-span-12 sm:col-span-2">
-                      <label className="text-xs font-medium text-gray-500 mb-1 flex items-center">
-                        <DollarSign size={12} className="mr-1" /> Harga Normal
+                      <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center">
+                        <DollarSign size={12} className="mr-1" /> Harga Min
                       </label>
                       <input
                         type="number"
@@ -709,8 +817,9 @@ const EventModal = ({
 
                     {/* Kolom 3: Flag Off Date - 3 kolom */}
                     <div className="col-span-12 sm:col-span-3">
-                      <label className="text-xs font-medium text-gray-500 mb-1 flex items-center">
-                        <Calendar size={12} className="mr-1" /> Flag Off Date
+                      <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center">
+                        <Calendar size={12} className="mr-1" /> Flag Off Date{" "}
+                        <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="date"
@@ -730,7 +839,7 @@ const EventModal = ({
 
                     {/* Kolom 4: Flag Off Time - 2 kolom */}
                     <div className="col-span-12 sm:col-span-2">
-                      <label className="text-xs font-medium text-gray-500 mb-1 flex items-center">
+                      <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center">
                         <Clock4 size={12} className="mr-1" /> Flag Off Time
                       </label>
                       <input
@@ -751,7 +860,7 @@ const EventModal = ({
 
                     {/* Kolom 5: COT (HH:MM) - 2 kolom */}
                     <div className="col-span-12 sm:col-span-2">
-                      <label className="text-xs font-medium text-gray-500 mb-1 flex items-center">
+                      <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center">
                         <Clock size={12} className="mr-1" /> COT (HH:MM)
                       </label>
                       <input
@@ -773,6 +882,73 @@ const EventModal = ({
                         pattern="\d{1,2}:\d{2}"
                         disabled={isProcessing}
                       />
+                    </div>
+                  </div>
+
+                  {/* BARU: Input Link Gambar Rute dengan tombol Upload */}
+                  <div className="grid grid-cols-12 gap-3 mt-3 pt-3 border-t border-gray-100">
+                    <div className="col-span-12">
+                      <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center">
+                        <LinkIcon size={12} className="mr-1" /> Link Gambar Rute
+                        (Opsional)
+                      </label>
+                      <div className="flex space-x-2 items-center">
+                        {/* Input URL Manual */}
+                        <input
+                          type="url"
+                          name={`route_image_url_${index}`}
+                          placeholder="URL Gambar Rute atau Upload"
+                          value={dist.route_image_url || ""}
+                          onChange={(e) =>
+                            handleDistanceChange(
+                              index,
+                              "route_image_url",
+                              e.target.value
+                            )
+                          }
+                          className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:ring-blue-500"
+                          disabled={isProcessing || uploading[index]}
+                        />
+                        {/* Tombol Upload */}
+                        <label
+                          htmlFor={`file-upload-${index}`}
+                          className={`flex-shrink-0 flex items-center justify-center p-2 rounded-lg text-white text-sm font-semibold transition cursor-pointer whitespace-nowrap ${
+                            uploading[index]
+                              ? "bg-gray-400 cursor-not-allowed"
+                              : "bg-blue-600 hover:bg-blue-700"
+                          }`}
+                          title="Upload file ke Supabase Storage (Max 5MB)"
+                        >
+                          {uploading[index] ? (
+                            <Loader size={16} className="animate-spin" />
+                          ) : (
+                            "Upload File"
+                          )}
+                          <input
+                            id={`file-upload-${index}`}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => handleFileUpload(e, index)}
+                            disabled={isProcessing || uploading[index]}
+                          />
+                        </label>
+                      </div>
+
+                      {/* Status/Error Upload */}
+                      {uploadError[index] && (
+                        <p className="text-xs text-red-500 mt-1">
+                          {uploadError[index]}
+                        </p>
+                      )}
+                      {dist.route_image_url &&
+                        !uploading[index] &&
+                        !uploadError[index] && (
+                          <p className="text-xs text-green-600 mt-1 truncate">
+                            Tersimpan: {dist.route_image_url.substring(0, 50)}
+                            ...
+                          </p>
+                        )}
                     </div>
                   </div>
                 </div>
@@ -808,7 +984,7 @@ const EventModal = ({
                     <div className="w-full pr-4">
                       <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
                         <MapPin size={14} className="mr-1 text-gray-500" /> Nama
-                        Lokasi/Venue
+                        Lokasi/Venue <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -861,7 +1037,7 @@ const EventModal = ({
                       >
                         <div className="col-span-4">
                           <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Tanggal
+                            Tanggal <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="date"
@@ -1005,16 +1181,23 @@ const EventModal = ({
               type="button"
               onClick={onClose}
               className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-200 transition text-sm"
-              disabled={isProcessing}
+              disabled={
+                isProcessing ||
+                Object.values(uploading).some((status) => status)
+              }
             >
               Batal
             </button>
             <button
               type="submit"
               className="flex items-center rounded-lg bg-green-600 px-4 py-2 text-white font-semibold hover:bg-green-700 transition text-sm disabled:bg-gray-400"
-              disabled={isProcessing}
+              disabled={
+                isProcessing ||
+                Object.values(uploading).some((status) => status)
+              }
             >
-              {isProcessing ? (
+              {isProcessing ||
+              Object.values(uploading).some((status) => status) ? (
                 <Loader size={18} className="animate-spin mr-2" />
               ) : (
                 <Save size={18} className="mr-2" />
@@ -1028,7 +1211,6 @@ const EventModal = ({
   );
 };
 
-// Tambahkan seriesIdToFilter sebagai prop
 const EventCrud = ({ navigateToEvents, seriesIdToFilter }) => {
   const tableName = "events";
   const displayName = "Event Tahunan";
@@ -1089,12 +1271,10 @@ const EventCrud = ({ navigateToEvents, seriesIdToFilter }) => {
       fetchedDistances.map((d) => [d.id, d.distance_name])
     );
 
-    // Panggil fetchEvents setelah data master siap
     fetchEvents(fetchedSeries, distanceNameMap);
   };
 
   // Fetch Event List with Series Name and nested details
-  // Tambahkan seriesIdToFilter sebagai dependency
   const fetchEvents = useCallback(
     async (fetchedSeries, distanceNameMap) => {
       setIsLoading(true);
@@ -1103,16 +1283,16 @@ const EventCrud = ({ navigateToEvents, seriesIdToFilter }) => {
         `
                 id, event_year, date_start, date_end, is_published, rpc_info, event_location,
                 results_link, docs_link, series_id,
-                event_distances!inner(distance_id, price_min, cut_off_time_hrs, flag_off_time),
+                event_distances!inner(distance_id, price_min, cut_off_time_hrs, flag_off_time, route_image_url),
                 event_race_types!inner(type_id)
             `
       );
 
-      // LOGIKA FILTER BARU: Terapkan filter jika seriesIdToFilter ada
+      // LOGIKA FILTER: Terapkan filter jika seriesIdToFilter ada
       if (seriesIdToFilter) {
         query = query.eq("series_id", seriesIdToFilter);
       }
-      // END LOGIKA FILTER BARU
+      // END LOGIKA FILTER
 
       const { data, error } = await query.order("date_start", {
         ascending: false,
@@ -1141,7 +1321,7 @@ const EventCrud = ({ navigateToEvents, seriesIdToFilter }) => {
       setIsLoading(false);
     },
     [seriesIdToFilter]
-  ); // <-- Tambahkan dependency filter
+  );
 
   // --- MODAL & DELETE CONTROL ---
 
@@ -1246,6 +1426,7 @@ const EventCrud = ({ navigateToEvents, seriesIdToFilter }) => {
           cut_off_time_hrs: d.cut_off_time_hrs || 0,
           // BARU: Flag Off Time (TIMESTAMPZ)
           flag_off_time: flagOffTimestamp,
+          route_image_url: d.route_image_url || null, // <-- Tambahkan URL Gambar Rute
         };
       });
 
