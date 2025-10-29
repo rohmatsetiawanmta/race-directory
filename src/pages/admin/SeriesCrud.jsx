@@ -347,12 +347,10 @@ const SeriesCrud = ({ navigateToEvents }) => {
                           rel="noopener noreferrer"
                           className="text-blue-600 hover:text-blue-800 text-xs flex items-center truncate max-w-[150px]"
                         >
-                          Link Series
+                          Link
                         </a>
                       ) : (
-                        <span className="text-gray-400 italic text-xs">
-                          Tidak ada URL
-                        </span>
+                        <span className="text-gray-400 italic text-xs">-</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right w-1/6">
