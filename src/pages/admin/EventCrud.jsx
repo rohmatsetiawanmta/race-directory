@@ -20,7 +20,8 @@ import {
   Link as LinkIcon,
   Map as MapIconComponent, // Ikon untuk lokasi RPC (digunakan untuk menghindari konflik dengan Map JavaScript)
   ListChecks, // Ikon baru untuk detail tanggal RPC
-  Clock4, // Ikon baru untuk waktu flag off
+  Clock4,
+  Wallet, // Ikon baru untuk waktu flag off
 } from "lucide-react";
 
 // Enum to manage event registration status colors (Dibiarkan untuk referensi list lama, meski status reg. dihapus dari form)
@@ -126,19 +127,25 @@ const EventModal = ({
     return d.toISOString().substring(0, 10);
   };
 
+  const initialLinkState = (label) => ({
+    id: Date.now() + Math.random(),
+    label: label,
+    url: "",
+  });
+
   const initialFormState = {
     series_id: seriesList[0]?.id || "",
     event_year: new Date().getFullYear(),
     date_start: "",
     date_end: "",
     is_multiday: false,
-    results_link: "",
-    docs_link: "",
+    // --- DIUBAH: Mengganti link string menjadi link array JSONB ---
+    results_links: [initialLinkState("Hasil Utama")],
+    docs_links: [initialLinkState("Dokumentasi Utama")],
+    // --- END DIUBAH ---
     is_published: false,
-    // BARU: Lokasi Event
     event_location: "",
     distances: [],
-    // Tambahkan state untuk Race Pack Collection Info
     rpc_info: [
       {
         id: Date.now(),
@@ -204,11 +211,23 @@ const EventModal = ({
           : [],
         // MAPPING: Load RPC info dari JSONB (default jika null)
         rpc_info: initialData.rpc_info || initialFormState.rpc_info,
+        // --- DIUBAH: Mapping Link Array Baru ---
+        results_links:
+          initialData.results_links && initialData.results_links.length > 0
+            ? initialData.results_links
+            : [initialLinkState("Hasil Utama")],
+        docs_links:
+          initialData.docs_links && initialData.docs_links.length > 0
+            ? initialData.docs_links
+            : [initialLinkState("Dokumentasi Utama")],
+        // --- END DIUBAH ---
       });
     } else {
       setFormState({
         ...initialFormState,
         series_id: seriesList[0]?.id || "",
+        results_links: [initialLinkState("Hasil Utama")],
+        docs_links: [initialLinkState("Dokumentasi Utama")],
       });
     }
     // Reset status upload saat modal dibuka
@@ -462,6 +481,34 @@ const EventModal = ({
     });
     setFormState((prev) => ({ ...prev, rpc_info: newRpcInfo }));
   };
+
+  // --- HANDLER BARU UNTUK LIST LINK ---
+  const handleLinkChange = (listName, id, field, value) => {
+    setFormState((prev) => ({
+      ...prev,
+      [listName]: prev[listName].map((item) =>
+        item.id === id ? { ...item, [field]: value } : item
+      ),
+    }));
+  };
+
+  const addLink = (listName, defaultLabel) => {
+    setFormState((prev) => ({
+      ...prev,
+      [listName]: [
+        ...prev[listName],
+        { id: Date.now() + Math.random(), label: defaultLabel, url: "" },
+      ],
+    }));
+  };
+
+  const removeLink = (listName, id) => {
+    setFormState((prev) => ({
+      ...prev,
+      [listName]: prev[listName].filter((item) => item.id !== id),
+    }));
+  };
+  // --- END HANDLER BARU ---
 
   // --- SUBMIT VALIDATION ---
   const handleSubmit = (e) => {
@@ -796,7 +843,7 @@ const EventModal = ({
                     {/* Kolom 2: Harga - 2 kolom */}
                     <div className="col-span-12 sm:col-span-2">
                       <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center">
-                        <DollarSign size={12} className="mr-1" /> Harga Min
+                        <Wallet size={12} className="mr-1" /> Harga Normal
                       </label>
                       <input
                         type="number"
@@ -1117,44 +1164,143 @@ const EventModal = ({
             </div>
           </div>
 
-          {/* Bagian 5: Link dan Publish (UI Revised) */}
+          {/* Bagian 5: Link dan Publish (DIREVISI) */}
           <div className="space-y-4 p-4 rounded-lg bg-blue-50/50">
             {" "}
             {/* Use same blue background */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Results Link */}
+              {/* KOLOM KIRI: Hasil Lomba Links */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Link Hasil Lomba
-                </label>
-                <input
-                  type="url"
-                  name="results_link"
-                  value={formState.results_link}
-                  onChange={handleFormChange}
-                  className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:ring-blue-500"
-                  placeholder="https://results.link"
-                  disabled={isProcessing}
-                />
+                <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                  <LinkIcon size={16} className="mr-1" /> Link Hasil Lomba
+                  <button
+                    type="button"
+                    onClick={() => addLink("results_links", "Hasil Tambahan")}
+                    className="ml-auto text-blue-600 hover:text-blue-800 text-xs font-medium flex items-center"
+                    disabled={isProcessing}
+                  >
+                    <PlusCircle size={14} className="mr-1" /> Tambah
+                  </button>
+                </h4>
+                <div className="space-y-3">
+                  {formState.results_links.map((link) => (
+                    <div key={link.id} className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        placeholder="Label (e.g., Hasil Utama)"
+                        value={link.label}
+                        onChange={(e) =>
+                          handleLinkChange(
+                            "results_links",
+                            link.id,
+                            "label",
+                            e.target.value
+                          )
+                        }
+                        className="w-1/3 rounded-lg border p-2 text-xs"
+                        disabled={isProcessing}
+                      />
+                      <input
+                        type="url"
+                        placeholder="URL Hasil Lomba"
+                        value={link.url}
+                        onChange={(e) =>
+                          handleLinkChange(
+                            "results_links",
+                            link.id,
+                            "url",
+                            e.target.value
+                          )
+                        }
+                        className="w-1/2 rounded-lg border p-2 text-xs"
+                        disabled={isProcessing}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeLink("results_links", link.id)}
+                        className={`p-1 rounded-full ${
+                          formState.results_links.length <= 1 || isProcessing
+                            ? "text-gray-400 cursor-not-allowed"
+                            : "text-red-500 hover:bg-red-100"
+                        }`}
+                        disabled={
+                          formState.results_links.length <= 1 || isProcessing
+                        }
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
-              {/* Docs Link */}
+
+              {/* KOLOM KANAN: Dokumentasi Links */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Link Dokumentasi
-                </label>
-                <input
-                  type="url"
-                  name="docs_link"
-                  value={formState.docs_link}
-                  onChange={handleFormChange}
-                  className="w-full rounded-lg border border-gray-300 p-2 text-sm focus:ring-blue-500"
-                  placeholder="https://docs.link"
-                  disabled={isProcessing}
-                />
+                <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                  <LinkIcon size={16} className="mr-1" /> Link Dokumentasi
+                  <button
+                    type="button"
+                    onClick={() => addLink("docs_links", "Foto Utama")}
+                    className="ml-auto text-blue-600 hover:text-blue-800 text-xs font-medium flex items-center"
+                    disabled={isProcessing}
+                  >
+                    <PlusCircle size={14} className="mr-1" /> Tambah
+                  </button>
+                </h4>
+                <div className="space-y-3">
+                  {formState.docs_links.map((link) => (
+                    <div key={link.id} className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        placeholder="Label (e.g., Foto Instagram)"
+                        value={link.label}
+                        onChange={(e) =>
+                          handleLinkChange(
+                            "docs_links",
+                            link.id,
+                            "label",
+                            e.target.value
+                          )
+                        }
+                        className="w-1/3 rounded-lg border p-2 text-xs"
+                        disabled={isProcessing}
+                      />
+                      <input
+                        type="url"
+                        placeholder="URL Dokumentasi"
+                        value={link.url}
+                        onChange={(e) =>
+                          handleLinkChange(
+                            "docs_links",
+                            link.id,
+                            "url",
+                            e.target.value
+                          )
+                        }
+                        className="w-1/2 rounded-lg border p-2 text-xs"
+                        disabled={isProcessing}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeLink("docs_links", link.id)}
+                        className={`p-1 rounded-full ${
+                          formState.docs_links.length <= 1 || isProcessing
+                            ? "text-gray-400 cursor-not-allowed"
+                            : "text-red-500 hover:bg-red-100"
+                        }`}
+                        disabled={
+                          formState.docs_links.length <= 1 || isProcessing
+                        }
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
             {/* Status Publish */}
-            <div className="flex gap-6 pt-2">
+            <div className="flex gap-6 pt-2 border-t mt-4">
               <div className="flex items-center">
                 <input
                   id="is_published"
@@ -1282,7 +1428,7 @@ const EventCrud = ({ navigateToEvents, seriesIdToFilter }) => {
       let query = supabase.from(tableName).select(
         `
                 id, event_year, date_start, date_end, is_published, rpc_info, event_location,
-                results_link, docs_link, series_id,
+                results_links, docs_links, series_id,
                 event_distances!inner(distance_id, price_min, cut_off_time_hrs, flag_off_time, route_image_url),
                 event_race_types!inner(type_id)
             `
@@ -1373,9 +1519,12 @@ const EventCrud = ({ navigateToEvents, seriesIdToFilter }) => {
         date_start: formData.date_start,
         date_end: formData.is_multiday ? formData.date_end : null,
         is_published: formData.is_published,
-        results_link: formData.results_link || null,
-        docs_link: formData.docs_link || null,
-        // BARU: Lokasi Event
+        // --- DIUBAH: Menggunakan link array JSONB yang baru ---
+        results_links: formData.results_links.filter(
+          (l) => l.url.trim() !== ""
+        ), // Filter out empty URLs
+        docs_links: formData.docs_links.filter((l) => l.url.trim() !== ""), // Filter out empty URLs
+        // --- END DIUBAH ---
         event_location: formData.event_location,
         // BARU: RPC Info (JSONB)
         rpc_info: formData.rpc_info,
