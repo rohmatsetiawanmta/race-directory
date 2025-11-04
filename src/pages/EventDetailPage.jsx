@@ -18,6 +18,8 @@ import {
   Wallet,
   Flag,
   Route,
+  ChevronLeft, // Icon untuk navigasi
+  ChevronRight, // Icon untuk navigasi
 } from "lucide-react";
 
 // Helper function (Duplikasi dari EventCrud untuk kemandirian)
@@ -26,12 +28,18 @@ const formatHours = (totalHours) => {
     return "00:00";
   const hours = Math.floor(totalHours);
   const minutes = Math.round((totalHours - hours) * 60);
-  const pad = (num) => String(num).padStart(2, "0");
-  if (minutes === 0) {
-    return `${hours} jam`;
-  } else {
-    return `${hours} jam ${minutes} menit`;
+  var text = "";
+  if (totalHours === 0) {
+    return "-";
   }
+  if (hours != 0) {
+    text = `${hours} jam `;
+  }
+  if (minutes != 0) {
+    text = `${text}${minutes} menit `;
+  }
+
+  return text.trim();
 };
 
 const formatCurrency = (amount) => {
@@ -58,16 +66,17 @@ const EventDetailPage = () => {
     setIsLoading(true);
 
     try {
-      // Deep select with all required relational data
+      // Query 1: Get the current event detail
       const { data, error } = await supabase
         .from("events")
         .select(
           `
             id, event_year, date_start, date_end, is_published, event_location, rpc_info,
-            results_link, docs_link,
-            series(series_name, organizer, location_city_main, series_official_url),
+            results_links, docs_links, 
+            series(id, series_name, organizer, location_city_main, series_official_url), 
             event_distances(
                 event_id, distance_id, price_min, cut_off_time_hrs, flag_off_time, route_image_url,
+                cut_off_points, 
                 distances(distance_name, distance_km, sort_order)
             ),
             event_race_types(
@@ -76,19 +85,59 @@ const EventDetailPage = () => {
           `
         )
         .eq("id", id)
-        .eq("is_published", true) // Hanya tampilkan yang sudah dipublikasi
+        .eq("is_published", true)
         .single();
 
       if (error) throw error;
       if (!data)
         throw new Error("Event tidak ditemukan atau belum dipublikasi.");
 
-      // Sort distances by distance_km from master distances
+      const currentSeriesId = data.series.id;
+
+      // Query 2: Get all related events for navigation
+      const { data: allSeriesEvents, error: eventsError } = await supabase
+        .from("events")
+        .select("id, event_year")
+        .eq("series_id", currentSeriesId)
+        .eq("is_published", true)
+        // Order berdasarkan TAHUN EVENT (Ascending), kemudian Tanggal Mulai (Descending)
+        // Ini memastikan navigasi konsisten berdasarkan urutan waktu.
+        .order("event_year", { ascending: true })
+        .order("date_start", { ascending: true });
+
+      if (eventsError)
+        console.error("Error fetching related events:", eventsError);
+
+      let prevEvent = null; // Tahun/Event yang terjadi SEBELUM event saat ini (Earlier Event)
+      let nextEvent = null; // Tahun/Event yang terjadi SETELAH event saat ini (Later Event)
+
+      if (allSeriesEvents && allSeriesEvents.length > 0) {
+        const currentIndex = allSeriesEvents.findIndex(
+          (event) => event.id === data.id
+        );
+
+        // prevEvent (Index yang lebih kecil = Penyelenggaraan Sebelumnya/Earlier)
+        if (currentIndex > 0) {
+          prevEvent = allSeriesEvents[currentIndex - 1];
+        }
+        // nextEvent (Index yang lebih besar = Penyelenggaraan Berikutnya/Later)
+        if (currentIndex < allSeriesEvents.length - 1) {
+          nextEvent = allSeriesEvents[currentIndex + 1];
+        }
+      }
+
+      // Sort distances as before
       const sortedDistances = data.event_distances.sort((a, b) => {
         return a.distances.distance_km - b.distances.distance_km;
       });
 
-      setEventData({ ...data, event_distances: sortedDistances });
+      setEventData({
+        ...data,
+        event_distances: sortedDistances,
+        // ⬅️ UPDATED: Simpan objek event lengkap untuk navigasi
+        prevEvent: prevEvent,
+        nextEvent: nextEvent,
+      });
     } catch (error) {
       console.error("Error fetching event detail:", error);
       toast.error(error.message || "Gagal memuat detail event.");
@@ -112,6 +161,26 @@ const EventDetailPage = () => {
     if (!end) return startDate;
     const endDate = formatDate(end);
     return `${startDate} - ${endDate}`;
+  };
+
+  // Helper function to render dynamic links
+  const renderLinks = (links, defaultLabel, baseBgColor, baseTextColor) => {
+    if (!Array.isArray(links) || links.length === 0) return null;
+
+    return links
+      .filter((link) => link.url && link.url.trim() !== "")
+      .map((link, index) => (
+        <a
+          key={index}
+          href={link.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`px-4 py-2 ${baseBgColor} ${baseTextColor} font-semibold rounded-lg hover:opacity-90 transition flex items-center shadow-md`}
+        >
+          <LinkIcon size={18} className="mr-2" />
+          {link.label || defaultLabel}
+        </a>
+      ));
   };
 
   if (isLoading) {
@@ -147,11 +216,13 @@ const EventDetailPage = () => {
     date_start,
     date_end,
     event_location,
-    results_link,
-    docs_link,
+    results_links,
+    docs_links,
     event_distances,
     event_race_types,
     rpc_info,
+    prevEvent, // ⬅️ Destructure event object
+    nextEvent, // ⬅️ Destructure event object
   } = eventData;
 
   const raceTypes = event_race_types
@@ -178,6 +249,40 @@ const EventDetailPage = () => {
         <p className="text-xl text-blue-600 font-semibold mb-6">
           Series oleh {series.organizer}
         </p>
+
+        {/* ⬅️ NEW: Navigation Buttons by Year (Mencerminkan Mockup) */}
+        <div className="flex justify-between items-center bg-gray-50 p-4 rounded-full mb-8">
+          {/* Tombol Sebelumnya (Tahun yang lebih lama) */}
+          {prevEvent ? (
+            <Link
+              to={`/events/${prevEvent.id}`}
+              className="flex items-center rounded-full px-4 py-2 bg-white border border-gray-300 text-gray-800 font-semibold hover:bg-gray-100 transition shadow-sm"
+            >
+              <ChevronLeft size={18} className="mr-2" />
+              {prevEvent.event_year}
+            </Link>
+          ) : (
+            <span className="flex items-center rounded-full px-4 py-2 bg-gray-100 text-gray-400 font-semibold transition cursor-not-allowed">
+              <ChevronLeft size={18} className="mr-2" /> -
+            </span>
+          )}
+
+          {/* Tombol Berikutnya (Tahun yang lebih baru) */}
+          {nextEvent ? (
+            <Link
+              to={`/events/${nextEvent.id}`}
+              className="flex items-center rounded-full px-4 py-2 bg-white border border-gray-300 text-gray-800 font-semibold hover:bg-gray-100 transition shadow-sm"
+            >
+              {nextEvent.event_year}
+              <ChevronRight size={18} className="ml-2" />
+            </Link>
+          ) : (
+            <span className="flex items-center rounded-full px-4 py-2 bg-gray-100 text-gray-400 font-semibold transition cursor-not-allowed">
+              - <ChevronRight size={18} className="ml-2" />
+            </span>
+          )}
+        </div>
+        {/* ⬅️ END: Navigation Buttons */}
 
         <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600 mb-8 border-b pb-4">
           <a
@@ -306,18 +411,16 @@ const EventDetailPage = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* DETAIL 1: Flag Off Combined Date/Time (2 Kolom) */}
                   <div className="p-4 rounded-lg bg-red-50 shadow-md">
-                    <p className="text-xs font-medium text-red-600 mb-1 flex items-center">
+                    <p className="text-sm font-bold text-red-600 mb-1 flex items-center">
                       <Clock4 size={14} className="mr-1" /> Flag Off
                     </p>
-                    <p className="text-xl font-bold text-gray-800 leading-snug">
-                      {new Date(dist.flag_off_time).toLocaleDateString(
-                        "id-ID",
-                        {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                        }
-                      )}
+                    <p className="text-lg font-semibold text-gray-800 leading-snug">
+                      {new Intl.DateTimeFormat("id-ID", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                        timeZone: "UTC",
+                      }).format(new Date(dist.flag_off_time))}
                       ,<br />
                       {dist.flag_off_time.substring(11, 16)} WIB
                     </p>
@@ -325,13 +428,43 @@ const EventDetailPage = () => {
 
                   {/* DETAIL 2: COT (1 Kolom) */}
                   <div className="p-4 rounded-lg bg-indigo-50 shadow-md">
-                    <p className="text-xs font-medium text-indigo-600 mb-1 flex items-center">
+                    <p className="text-sm font-bold text-indigo-600 mb-1 flex items-center">
                       <Clock size={14} className="mr-1" /> Cut Off Time (COT)
                     </p>
-                    <p className="text-xl font-extrabold text-indigo-700">
+                    <p className="text-lg font-semibold text-indigo-700">
                       {formatHours(dist.cut_off_time_hrs)}
                     </p>
                   </div>
+
+                  {/* DETAIL 3: Cut Off Points (Jika ada) */}
+                  {Array.isArray(dist.cut_off_points) &&
+                    dist.cut_off_points.length > 0 && (
+                      <div className="col-span-2 p-4 rounded-lg bg-red-50 border border-red-200">
+                        <p className="text-sm font-bold text-red-700 mb-2 flex items-center">
+                          <Route size={14} className="mr-1" />
+                          Cut Off Points
+                        </p>
+                        <ul className="space-y-1">
+                          {/* Data Cut Off Points di-map dan ditampilkan sebagai durasi (menggunakan formatHours) */}
+                          {dist.cut_off_points
+                            .sort((a, b) => a.km_mark - b.km_mark) // Sort by KM ascending
+                            .map((cop, copIndex) => (
+                              <li
+                                key={copIndex}
+                                className="text-sm text-gray-700"
+                              >
+                                <span className="font-semibold text-red-500">
+                                  KM {cop.km_mark}:
+                                </span>{" "}
+                                <span className="font-semibold">
+                                  {formatHours(cop.time_limit_hrs)}
+                                </span>{" "}
+                                dari Flag Off
+                              </li>
+                            ))}
+                        </ul>
+                      </div>
+                    )}
                 </div>
               </div>
             ))}
@@ -435,32 +568,29 @@ const EventDetailPage = () => {
             Dokumen
           </h2>
           <div className="flex flex-wrap gap-4">
-            {results_link && (
-              <a
-                href={results_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition flex items-center"
-              >
-                <LinkIcon size={18} className="mr-2" /> Lihat Hasil Lomba
-              </a>
+            {/* Hasil Lomba Links (Warna Biru) */}
+            {renderLinks(
+              results_links,
+              "Link Hasil Lomba",
+              "bg-blue-600",
+              "text-white"
             )}
-            {docs_link && (
-              <a
-                href={docs_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-100 transition flex items-center"
-              >
-                <LinkIcon size={18} className="mr-2" /> Lihat Dokumentasi
-              </a>
+
+            {/* Dokumentasi Links (Warna Putih Border) */}
+            {renderLinks(
+              docs_links,
+              "Link Dokumentasi",
+              "border border-gray-300 bg-white",
+              "text-gray-700 hover:bg-gray-100"
             )}
+
+            {/* Link Website Resmi Series (TETAP SAMA) */}
             {series.series_official_url && (
               <a
                 href={series.series_official_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-2 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-100 transition flex items-center"
+                className="px-4 py-2 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-100 transition flex items-center shadow-md"
               >
                 <LinkIcon size={18} className="mr-2" /> Website Resmi Series
               </a>

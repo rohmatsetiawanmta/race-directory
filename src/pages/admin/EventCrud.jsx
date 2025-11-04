@@ -139,10 +139,8 @@ const EventModal = ({
     date_start: "",
     date_end: "",
     is_multiday: false,
-    // --- DIUBAH: Mengganti link string menjadi link array JSONB ---
     results_links: [initialLinkState("Hasil Utama")],
     docs_links: [initialLinkState("Dokumentasi Utama")],
-    // --- END DIUBAH ---
     is_published: false,
     event_location: "",
     distances: [],
@@ -186,9 +184,7 @@ const EventModal = ({
         race_types: initialData.event_race_types
           ? initialData.event_race_types.map((rt) => rt.type_id)
           : [],
-        // BARU: Ambil lokasi event dari data yang ada
         event_location: initialData.event_location || "",
-        // MAPPING: Untuk data yang sudah ada, tambahkan field display COT yang sudah diformat
         distances: initialData.event_distances
           ? initialData.event_distances.map((d) => {
               // Ekstraksi tanggal dan waktu dari timestampz Flag Off
@@ -206,12 +202,20 @@ const EventModal = ({
                 flag_off_time: flagOffTime, // HH:MM
                 flag_off_date: flagOffDate, // YYYY-MM-DD
                 route_image_url: d.route_image_url || "", // <-- Ambil URL Gambar Rute
+                // ⬅️ NEW: Load cut_off_points dari DB, convert to UI format
+                cut_off_points: (d.cut_off_points || []).map((cop) => ({
+                  // Generate temp ID untuk CRUD di UI
+                  id: Date.now() + Math.random(),
+                  km_mark: cop.km_mark,
+                  // Convert stored decimal hours back to HH:MM for display
+                  time_limit_hrs: formatHoursToHHMM(cop.time_limit_hrs),
+                })),
               };
             })
           : [],
         // MAPPING: Load RPC info dari JSONB (default jika null)
         rpc_info: initialData.rpc_info || initialFormState.rpc_info,
-        // --- DIUBAH: Mapping Link Array Baru ---
+        // MAPPING: Mapping Link Array Baru
         results_links:
           initialData.results_links && initialData.results_links.length > 0
             ? initialData.results_links
@@ -220,7 +224,6 @@ const EventModal = ({
           initialData.docs_links && initialData.docs_links.length > 0
             ? initialData.docs_links
             : [initialLinkState("Dokumentasi Utama")],
-        // --- END DIUBAH ---
       });
     } else {
       setFormState({
@@ -282,6 +285,68 @@ const EventModal = ({
 
     setFormState((prev) => ({ ...prev, distances: newDistances }));
   };
+
+  const addDistance = () => {
+    setFormState((prev) => ({
+      ...prev,
+      distances: [
+        ...prev.distances,
+        {
+          distance_id: "",
+          price_min: 0,
+          cut_off_time_hrs: 0,
+          cut_off_time_hrs_display: "00:00",
+          flag_off_time: "05:00", // Default HH:MM
+          flag_off_date: formState.date_start || "", // Default ke tanggal mulai event
+          route_image_url: "", // <-- Field untuk URL Gambar Rute
+          cut_off_points: [], // ⬅️ NEW: Initialize COP as empty array
+        },
+      ],
+    }));
+  };
+
+  const removeDistance = (index) => {
+    const newDistances = formState.distances.filter((_, i) => i !== index);
+    setFormState((prev) => ({ ...prev, distances: newDistances }));
+  };
+
+  // --- LOGIC UNTUK NESTED CUT OFF POINTS (COP) ---
+  const handleCopChange = (distIndex, copId, field, value) => {
+    const newDistances = [...formState.distances];
+    newDistances[distIndex].cut_off_points = newDistances[
+      distIndex
+    ].cut_off_points.map((cop) =>
+      cop.id === copId
+        ? {
+            ...cop,
+            [field]: field === "km_mark" ? parseFloat(value) || 0 : value, // km_mark is numeric
+          }
+        : cop
+    );
+    setFormState((prev) => ({ ...prev, distances: newDistances }));
+  };
+
+  const addCop = (distIndex) => {
+    const newDistances = [...formState.distances];
+    newDistances[distIndex].cut_off_points = [
+      ...(newDistances[distIndex].cut_off_points || []),
+      {
+        id: Date.now() + Math.random(),
+        km_mark: 0,
+        time_limit_hrs: "00:00", // Time limit from Flag Off in HH:MM format (UI)
+      },
+    ];
+    setFormState((prev) => ({ ...prev, distances: newDistances }));
+  };
+
+  const removeCop = (distIndex, copId) => {
+    const newDistances = [...formState.distances];
+    newDistances[distIndex].cut_off_points = (
+      newDistances[distIndex].cut_off_points || []
+    ).filter((cop) => cop.id !== copId);
+    setFormState((prev) => ({ ...prev, distances: newDistances }));
+  };
+  // --- END LOGIC COP ---
 
   // FUNGSI BARU: Mengunggah file ke Supabase Storage
   const handleFileUpload = async (e, index) => {
@@ -370,29 +435,6 @@ const EventModal = ({
     } finally {
       setUploading((prev) => ({ ...prev, [index]: false }));
     }
-  };
-
-  const addDistance = () => {
-    setFormState((prev) => ({
-      ...prev,
-      distances: [
-        ...prev.distances,
-        {
-          distance_id: "",
-          price_min: 0,
-          cut_off_time_hrs: 0,
-          cut_off_time_hrs_display: "00:00",
-          flag_off_time: "05:00", // Default HH:MM
-          flag_off_date: formState.date_start || "", // Default ke tanggal mulai event
-          route_image_url: "", // <-- Field untuk URL Gambar Rute
-        },
-      ],
-    }));
-  };
-
-  const removeDistance = (index) => {
-    const newDistances = formState.distances.filter((_, i) => i !== index);
-    setFormState((prev) => ({ ...prev, distances: newDistances }));
   };
 
   // --- LOGIC UNTUK NESTED RACE PACK COLLECTION (RPC) ---
@@ -808,7 +850,6 @@ const EventModal = ({
                     <div className="col-span-12 sm:col-span-3">
                       <label className="block text-xs font-medium text-gray-500 mb-1">
                         <Ruler size={12} className="mr-1 inline" /> Jarak
-                        (Master)
                       </label>
                       <select
                         value={dist.distance_id}
@@ -865,8 +906,7 @@ const EventModal = ({
                     {/* Kolom 3: Flag Off Date - 3 kolom */}
                     <div className="col-span-12 sm:col-span-3">
                       <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center">
-                        <Calendar size={12} className="mr-1" /> Flag Off Date{" "}
-                        <span className="text-red-500">*</span>
+                        <Calendar size={12} className="mr-1" /> Flag Off Date
                       </label>
                       <input
                         type="date"
@@ -937,7 +977,6 @@ const EventModal = ({
                     <div className="col-span-12">
                       <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center">
                         <LinkIcon size={12} className="mr-1" /> Link Gambar Rute
-                        (Opsional)
                       </label>
                       <div className="flex space-x-2 items-center">
                         {/* Input URL Manual */}
@@ -996,6 +1035,88 @@ const EventModal = ({
                             ...
                           </p>
                         )}
+                    </div>
+                  </div>
+
+                  {/* --- BARU: Cut Off Points (COP) Section --- */}
+                  <div className="grid grid-cols-12 gap-3 mt-3 pt-3 border-t border-gray-100">
+                    <div className="col-span-12">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center justify-between">
+                        <span className="flex items-center">
+                          <Clock size={16} className="mr-1 text-red-500" />
+                          Cut Off Points (COP)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => addCop(index)}
+                          className="text-red-600 hover:text-red-800 text-xs font-medium flex items-center"
+                          disabled={isProcessing}
+                        >
+                          <PlusCircle size={14} className="mr-1" /> Tambah COP
+                        </button>
+                      </h4>
+                      <div className="space-y-2">
+                        {(!dist.cut_off_points ||
+                          dist.cut_off_points.length === 0) && (
+                          <p className="text-xs text-gray-500 italic p-2 border rounded border-dashed border-gray-300 bg-gray-100">
+                            Tidak ada Cut Off Point untuk jarak ini.
+                          </p>
+                        )}
+                        {dist.cut_off_points &&
+                          dist.cut_off_points.map((cop) => (
+                            <div
+                              key={cop.id}
+                              className="flex gap-2 items-center"
+                            >
+                              {/* Input KM Mark */}
+                              <input
+                                type="number"
+                                placeholder="KM Mark (e.g., 21)"
+                                value={cop.km_mark || ""}
+                                onChange={(e) =>
+                                  handleCopChange(
+                                    index,
+                                    cop.id,
+                                    "km_mark",
+                                    e.target.value
+                                  )
+                                }
+                                className="w-1/3 rounded-lg border p-2 text-xs border-gray-300"
+                                min="0.1"
+                                step="0.1"
+                                required
+                                disabled={isProcessing}
+                              />
+                              {/* Input Time Limit HH:MM */}
+                              <input
+                                type="text"
+                                placeholder="Limit (HH:MM dari Flag Off)"
+                                value={cop.time_limit_hrs || ""}
+                                onChange={(e) =>
+                                  handleCopChange(
+                                    index,
+                                    cop.id,
+                                    "time_limit_hrs",
+                                    e.target.value
+                                  )
+                                }
+                                className="w-1/2 rounded-lg border p-2 text-xs border-gray-300"
+                                pattern="\d{1,2}:\d{2}"
+                                required
+                                disabled={isProcessing}
+                              />
+                              {/* Tombol Hapus COP */}
+                              <button
+                                type="button"
+                                onClick={() => removeCop(index, cop.id)}
+                                className={`p-1 rounded-full text-red-500 hover:bg-red-100`}
+                                disabled={isProcessing}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          ))}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1429,7 +1550,7 @@ const EventCrud = ({ navigateToEvents, seriesIdToFilter }) => {
         `
                 id, event_year, date_start, date_end, is_published, rpc_info, event_location,
                 results_links, docs_links, series_id,
-                event_distances!inner(distance_id, price_min, cut_off_time_hrs, flag_off_time, route_image_url),
+                event_distances!inner(distance_id, price_min, cut_off_time_hrs, flag_off_time, route_image_url, cut_off_points),
                 event_race_types!inner(type_id)
             `
       );
@@ -1519,16 +1640,14 @@ const EventCrud = ({ navigateToEvents, seriesIdToFilter }) => {
         date_start: formData.date_start,
         date_end: formData.is_multiday ? formData.date_end : null,
         is_published: formData.is_published,
-        // --- DIUBAH: Menggunakan link array JSONB yang baru ---
+        // Menggunakan link array JSONB yang baru
         results_links: formData.results_links.filter(
           (l) => l.url.trim() !== ""
         ), // Filter out empty URLs
         docs_links: formData.docs_links.filter((l) => l.url.trim() !== ""), // Filter out empty URLs
-        // --- END DIUBAH ---
         event_location: formData.event_location,
         // BARU: RPC Info (JSONB)
         rpc_info: formData.rpc_info,
-        // LOGIC KOMPATIBILITAS: Dihapus sesuai permintaan user
       };
 
       let eventId;
@@ -1568,6 +1687,14 @@ const EventCrud = ({ navigateToEvents, seriesIdToFilter }) => {
         const datePart = d.flag_off_date;
         const flagOffTimestamp = `${datePart}T${d.flag_off_time || "00:00"}:00`;
 
+        // ⬅️ NEW: Map COP array, convert time_limit_hrs (HH:MM) to hours decimal
+        const processedCop = (d.cut_off_points || [])
+          .filter((cop) => cop.km_mark > 0 && cop.time_limit_hrs) // Filter out incomplete COP
+          .map((cop) => ({
+            km_mark: cop.km_mark,
+            time_limit_hrs: parseHHMMToHours(cop.time_limit_hrs),
+          }));
+
         return {
           event_id: eventId,
           distance_id: d.distance_id,
@@ -1576,6 +1703,8 @@ const EventCrud = ({ navigateToEvents, seriesIdToFilter }) => {
           // BARU: Flag Off Time (TIMESTAMPZ)
           flag_off_time: flagOffTimestamp,
           route_image_url: d.route_image_url || null, // <-- Tambahkan URL Gambar Rute
+          // ⬅️ NEW: Include processed COP payload (JSONB)
+          cut_off_points: processedCop,
         };
       });
 
@@ -1599,7 +1728,7 @@ const EventCrud = ({ navigateToEvents, seriesIdToFilter }) => {
       );
       closeAllModals();
 
-      // FIX ERROR: Panggil fetchMasterData untuk memastikan semua Map di-reinitialize
+      // Panggil fetchMasterData untuk memastikan semua Map di-reinitialize
       fetchMasterData();
     } catch (error) {
       console.error("Submission Error:", error);
@@ -1627,7 +1756,7 @@ const EventCrud = ({ navigateToEvents, seriesIdToFilter }) => {
 
       toast.success("Event berhasil dihapus!", { id: toastId });
       closeAllModals();
-      fetchMasterData(); // FIX ERROR: Panggil fetchMasterData
+      fetchMasterData();
     } catch (error) {
       console.error("Delete Error:", error);
       toast.error(`Gagal menghapus Event. Pesan: ${error.message}.`, {
