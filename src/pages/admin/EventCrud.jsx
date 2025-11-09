@@ -18,10 +18,10 @@ import {
   X,
   Save,
   Link as LinkIcon,
-  Map as MapIconComponent, // Ikon untuk lokasi RPC (digunakan untuk menghindari konflik dengan Map JavaScript)
-  ListChecks, // Ikon baru untuk detail tanggal RPC
+  Map as MapIconComponent,
+  ListChecks,
   Clock4,
-  Wallet, // Ikon baru untuk waktu flag off
+  Wallet,
 } from "lucide-react";
 
 // Enum to manage event registration status colors (Dibiarkan untuk referensi list lama, meski status reg. dihapus dari form)
@@ -141,6 +141,7 @@ const EventModal = ({
     is_multiday: false,
     results_links: [initialLinkState("Hasil Utama")],
     docs_links: [initialLinkState("Dokumentasi Utama")],
+    guide_links: [initialLinkState("Panduan Lomba")], // <-- BARU: Tambah guide_links
     is_published: false,
     event_location: "",
     distances: [],
@@ -224,6 +225,11 @@ const EventModal = ({
           initialData.docs_links && initialData.docs_links.length > 0
             ? initialData.docs_links
             : [initialLinkState("Dokumentasi Utama")],
+        // <-- BARU: Memuat guide_links
+        guide_links:
+          initialData.guide_links && initialData.guide_links.length > 0
+            ? initialData.guide_links
+            : [initialLinkState("Panduan Lomba")],
       });
     } else {
       setFormState({
@@ -231,6 +237,7 @@ const EventModal = ({
         series_id: seriesList[0]?.id || "",
         results_links: [initialLinkState("Hasil Utama")],
         docs_links: [initialLinkState("Dokumentasi Utama")],
+        guide_links: [initialLinkState("Panduan Lomba")], // <-- BARU: Inisialisasi untuk mode ADD
       });
     }
     // Reset status upload saat modal dibuka
@@ -1289,8 +1296,9 @@ const EventModal = ({
           <div className="space-y-4 p-4 rounded-lg bg-blue-50/50">
             {" "}
             {/* Use same blue background */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* KOLOM KIRI: Hasil Lomba Links */}
+            {/* UBAH DARI grid-cols-2 menjadi grid-cols-3 */}
+            <div className="grid grid-cols-1 gap-4">
+              {/* KOLOM 1: Hasil Lomba Links */}
               <div>
                 <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
                   <LinkIcon size={16} className="mr-1" /> Link Hasil Lomba
@@ -1355,7 +1363,7 @@ const EventModal = ({
                 </div>
               </div>
 
-              {/* KOLOM KANAN: Dokumentasi Links */}
+              {/* KOLOM 2: Link Dokumentasi */}
               <div>
                 <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
                   <LinkIcon size={16} className="mr-1" /> Link Dokumentasi
@@ -1411,6 +1419,71 @@ const EventModal = ({
                         }`}
                         disabled={
                           formState.docs_links.length <= 1 || isProcessing
+                        }
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* KOLOM 3: BARU - Link Panduan Lomba */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                  <LinkIcon size={16} className="mr-1" /> Link Panduan Lomba
+                  <button
+                    type="button"
+                    onClick={() => addLink("guide_links", "Panduan Utama")}
+                    className="ml-auto text-blue-600 hover:text-blue-800 text-xs font-medium flex items-center"
+                    disabled={isProcessing}
+                  >
+                    <PlusCircle size={14} className="mr-1" /> Tambah
+                  </button>
+                </h4>
+                <div className="space-y-3">
+                  {formState.guide_links.map((link) => (
+                    <div key={link.id} className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        placeholder="Label (e.g., Race Guide PDF)"
+                        value={link.label}
+                        onChange={(e) =>
+                          handleLinkChange(
+                            "guide_links",
+                            link.id,
+                            "label",
+                            e.target.value
+                          )
+                        }
+                        className="w-1/3 rounded-lg border p-2 text-xs"
+                        disabled={isProcessing}
+                      />
+                      <input
+                        type="url"
+                        placeholder="URL Panduan Lomba"
+                        value={link.url}
+                        onChange={(e) =>
+                          handleLinkChange(
+                            "guide_links",
+                            link.id,
+                            "url",
+                            e.target.value
+                          )
+                        }
+                        className="w-1/2 rounded-lg border p-2 text-xs"
+                        disabled={isProcessing}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeLink("guide_links", link.id)}
+                        className={`p-1 rounded-full ${
+                          formState.guide_links.length <= 1 || isProcessing
+                            ? "text-gray-400 cursor-not-allowed"
+                            : "text-red-500 hover:bg-red-100"
+                        }`}
+                        disabled={
+                          formState.guide_links.length <= 1 || isProcessing
                         }
                       >
                         <Trash2 size={16} />
@@ -1549,7 +1622,7 @@ const EventCrud = ({ navigateToEvents, seriesIdToFilter }) => {
       let query = supabase.from(tableName).select(
         `
                 id, event_year, date_start, date_end, is_published, rpc_info, event_location,
-                results_links, docs_links, series_id,
+                results_links, docs_links, guide_links, series_id,
                 event_distances!inner(distance_id, price_min, cut_off_time_hrs, flag_off_time, route_image_url, cut_off_points),
                 event_race_types!inner(type_id)
             `
@@ -1645,6 +1718,7 @@ const EventCrud = ({ navigateToEvents, seriesIdToFilter }) => {
           (l) => l.url.trim() !== ""
         ), // Filter out empty URLs
         docs_links: formData.docs_links.filter((l) => l.url.trim() !== ""), // Filter out empty URLs
+        guide_links: formData.guide_links.filter((l) => l.url.trim() !== ""), // <-- BARU: Tambah guide_links
         event_location: formData.event_location,
         // BARU: RPC Info (JSONB)
         rpc_info: formData.rpc_info,
@@ -1742,6 +1816,7 @@ const EventCrud = ({ navigateToEvents, seriesIdToFilter }) => {
   // --- DELETE LOGIC ---
   const handleDeleteConfirm = async (id) => {
     if (isProcessing) return;
+
     setIsProcessing(true);
     const toastId = toast.loading("Menghapus Event dan data terkait...");
 

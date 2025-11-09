@@ -72,7 +72,7 @@ const EventDetailPage = () => {
         .select(
           `
             id, event_year, date_start, date_end, is_published, event_location, rpc_info,
-            results_links, docs_links, 
+            results_links, docs_links, guide_links, 
             series(id, series_name, organizer, location_city_main, series_official_url), 
             event_distances(
                 event_id, distance_id, price_min, cut_off_time_hrs, flag_off_time, route_image_url,
@@ -134,7 +134,6 @@ const EventDetailPage = () => {
       setEventData({
         ...data,
         event_distances: sortedDistances,
-        // ⬅️ UPDATED: Simpan objek event lengkap untuk navigasi
         prevEvent: prevEvent,
         nextEvent: nextEvent,
       });
@@ -218,11 +217,12 @@ const EventDetailPage = () => {
     event_location,
     results_links,
     docs_links,
+    guide_links,
     event_distances,
     event_race_types,
     rpc_info,
-    prevEvent, // ⬅️ Destructure event object
-    nextEvent, // ⬅️ Destructure event object
+    prevEvent,
+    nextEvent,
   } = eventData;
 
   const raceTypes = event_race_types
@@ -582,6 +582,14 @@ const EventDetailPage = () => {
               "Link Dokumentasi",
               "border border-gray-300 bg-white",
               "text-gray-700 hover:bg-gray-100"
+            )}
+
+            {/* BARU: Link Panduan Lomba (Warna Hijau) */}
+            {renderLinks(
+              guide_links,
+              "Link Panduan Lomba",
+              "bg-green-600",
+              "text-white"
             )}
 
             {/* Link Website Resmi Series (TETAP SAMA) */}
